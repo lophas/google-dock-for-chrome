@@ -9,12 +9,15 @@ A macOS-inspired, auto-hiding dock for Google apps, built as a dependency-free C
 3. Click **Load unpacked** and select the extracted folder containing `manifest.json`.
 4. Refresh an existing website tab. Move the mouse to the bottom **center** of the page and pause briefly to reveal the dock.
 
-## Version 0.2.0
+## Version 0.3.0
 
 - Floating glass dock with hover magnification and a delayed hide.
+- Drag pinned icons directly in the dock to reorder them. A blue insertion marker shows the destination; order is saved across tabs.
+- The Gemini SVG uses self-contained colored paths so repeated copies in the launcher and dock cannot lose their gradient reference.
 - A configurable 4/16/24/32 px bottom trigger (24 px by default), 100 ms dwell and 380 ms hide delay; a generous corridor between the bottom edge and dock prevents flicker.
 - Gmail, Calendar, Drive, Docs, Sheets, Slides, Meet, Chat, Keep, Photos, Maps, YouTube and Gemini.
-- Click to focus an existing matching app tab (current window preferred), or open a new tab.
+- Shortcuts for Google Payments, Password Manager, Google Account, Contacts and Google One; they support pinning, tab reuse and grouping just like the apps.
+- A normal click reuses the app’s remembered tab, then falls back to an existing matching app tab (current window preferred), and opens a tab only when needed. App tab IDs are kept in session storage across service-worker restarts. Rapid same-app clicks are serialized to prevent duplicates. If the remembered tab closes or navigates away from the app, the next click finds or creates a replacement. The tab is not Chrome-pinned, so it can stay in the Google Dock tab group.
 - Ctrl/Cmd/Shift-click forces a new tab. Middle-click opens a background tab.
 - Right-click any dock or launcher icon for **Keep in Dock** and **Open New Tab**. Unpinned running apps appear to the right of a separator and disappear after their last tab closes (indicators refresh every four seconds while the dock is visible).
 - Apps opened or activated through the dock or toolbar launcher join a blue **Google Dock** native Chrome tab group in their own window. Concurrent launches reuse the same group. Chrome-pinned tabs remain pinned and display a grouping warning.
@@ -32,7 +35,8 @@ App URLs currently use the default Google account (`u/0` where supported). Tab r
 
 ## Permissions and privacy
 
-The `storage` and `tabGroups` API permissions are requested. `tabGroups` names and manages the native Google Dock group. Content scripts run on HTTP/HTTPS websites to provide the dock. These host grants also permit matching open app URLs for tab reuse, so a separate `tabs` permission is unnecessary. No history, cookies, mailbox or calendar-content APIs are used. Settings are stored in `chrome.storage.local`, without cloud sync. The extension queries tab URLs in memory for app matching and does not persist or transmit them. Google sites receive normal navigation requests when opened.
+The `storage`, `tabGroups` and `tabs` API permissions are requested. `tabGroups` names and manages the native Google Dock group. `tabs` explicitly enables reading app tab URLs and pending URLs for reliable reuse and running indicators, independently of content-script injection permissions. Content scripts run on HTTP/HTTPS websites to provide the dock. No cookies, mailbox or calendar-content APIs are used. Settings are stored in `chrome.storage.local`, without cloud sync. App-to-tab IDs live in `chrome.storage.session` and clear when the browser session ends. URLs are used in memory for app matching and are not persisted or transmitted. Google sites receive normal navigation requests when opened.
+
 
 ## Development
 
@@ -42,12 +46,12 @@ Load the source folder directly in Chrome. Run the behavior tests with Node 18+:
 node --test tests/*.test.cjs
 ```
 
-Automated tests cover tab reuse and creation, app matching, settings validation, concurrent pin changes and group creation, per-window grouping, grouping-failure handling, temporary running apps, right-click pinning, configurable trigger height, repeated edge reveal, dwell cancellation, the grace corridor, Escape, disabling and fullscreen suppression. Content-script tests use a DOM fixture; visual layout and actual Chrome API integration still need the manual checks below.
+Automated tests cover tab reuse and creation, rapid same-app launches, remembered tabs and sign-in redirects, pending URL detection, dock drag-and-drop persistence and click suppression, shortcut matching, app matching, settings validation, concurrent pin changes and group creation, per-window grouping, grouping-failure handling, temporary running apps, right-click pinning, configurable trigger height, repeated edge reveal, dwell cancellation, the grace corridor, Escape, disabling and fullscreen suppression. Content-script tests use a DOM fixture; visual layout and actual Chrome API integration still need the manual checks below.
 
 Manual acceptance checks: reveal at the bottom center; move into the dock and down through its gap; leave and verify delayed hiding; search apps and right-click to pin/unpin; close all tabs of a temporary app and verify removal; check group creation/reuse in multiple windows; test existing-tab focus, forced new tabs and middle clicks; change settings and reorder apps; verify narrow viewports, dark mode, keyboard focus, Escape and fullscreen.
 
 Google Dock for Chrome is an independent project and is not affiliated with Google. The existing repository GPL-3.0 license applies; see [LICENSE](LICENSE).
 
-## Updating from 0.1.0
+## Updating from an earlier version
 
-Replace the unpacked extension folder, reload it in `chrome://extensions`, and refresh website tabs. Existing settings are preserved; activation-zone height defaults to 24 px. The new `tabGroups` permission supports native group management.
+Replace the unpacked extension folder, reload it in `chrome://extensions`, and refresh website tabs. Existing settings are preserved; activation-zone height defaults to 24 px. Version 0.2 added `tabGroups`; version 0.3 adds `tabs` for reliable app-tab detection. Keep **Switch to an existing app tab when available** enabled for persistent reuse.

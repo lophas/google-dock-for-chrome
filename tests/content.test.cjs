@@ -5,9 +5,9 @@ const fs=require('node:fs');
 const path=require('node:path');
 // DOM fixture verifies the actual content-script event/timer wiring; no browser layout emulation.
 async function setup(){
-  const timers=new Map();let next=0, messageListener, storageListener, running=['gmail'], stored={};
+  const timers=new Map();let next=0, messageListener, storageListener, running=['gmail'], stored={}, requests=[];
   class Element {
-    constructor(){this.dataset={};this.children=[];this.handlers={};this.hidden=false;this.value='';this.style={setProperty(){}};this.isConnected=true;}
+    constructor(){this.dataset={};this.children=[];this.handlers={};this.hidden=false;this.value='';this.style={setProperty(){}};this.isConnected=true;this.classList={add:()=>{},remove:()=>{}};}
     append(...items){this.children.push(...items);}
     replaceChildren(){this.children=[];}
     setAttribute(){}
@@ -24,14 +24,14 @@ async function setup(){
   const nodes=Object.fromEntries(['.dock','.launcher','.search','.strip','.grid','.more','.settings','.status','.context-menu'].map(s=>[s,new Element()]));
   nodes['.launcher'].hidden=true;nodes['.context-menu'].hidden=true;
   const root=new Element(),document=new Element(),window=new Element();document.documentElement=new Element();document.createElement=tag=>{const el=new Element();el.tagName=tag;return el;};document.getElementById=()=>null;
-  const chrome={runtime:{getURL:n=>n,sendMessage:async message=>{if(message.type==='pin'){const config=context.GDock.normalize(stored);config.dockApps=config.dockApps.filter(id=>id!==message.appId);if(message.keep)config.dockApps.push(message.appId);stored=config;return {settings:stored};}return {ids:running};},onMessage:{addListener:fn=>messageListener=fn}},storage:{local:{get:async()=>({})},onChanged:{addListener:fn=>storageListener=fn}}};
+  const chrome={runtime:{getURL:n=>n,sendMessage:async message=>{requests.push(message);if(message.type==='reorder'){const config=context.GDock.normalize(stored);const ids=config.dockApps.filter(id=>id!==message.appId);ids.splice(message.beforeId==null?ids.length:ids.indexOf(message.beforeId),0,message.appId);config.dockApps=ids;stored=config;return {settings:stored};}if(message.type==='pin'){const config=context.GDock.normalize(stored);config.dockApps=config.dockApps.filter(id=>id!==message.appId);if(message.keep)config.dockApps.push(message.appId);stored=config;return {settings:stored};}return {ids:running};},onMessage:{addListener:fn=>messageListener=fn}},storage:{local:{get:async()=>({})},onChanged:{addListener:fn=>storageListener=fn}}};
   const context=vm.createContext({document,window,chrome,innerHeight:800,innerWidth:1000,URL,fetch:async()=>({text:async()=>''}),setTimeout:(fn,delay)=>{const id=++next;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id),setInterval:()=>{}});
   const run=f=>vm.runInContext(fs.readFileSync(path.join(__dirname,'..',f),'utf8'),context);
   run('shared.js');await run('content.js');
   const shell=root.children[1];
   const move=(x,y)=>document.dispatch('pointermove',{pointerType:'mouse',clientX:x,clientY:y});
   const tick=delay=>{for(const [id,t]of [...timers])if(t.delay===delay){timers.delete(id);t.fn();}};
-  return {setRunning:ids=>running=ids,refresh:async()=>{messageListener({type:'toggle-dock'});await new Promise(setImmediate);},move,tick,timers,shell,nodes,document,window,toggle:()=>messageListener({type:'toggle-dock'}),settings:s=>storageListener({settings:{newValue:s}},'local')};
+  return {requests,setRunning:ids=>running=ids,refresh:async()=>{messageListener({type:'toggle-dock'});await new Promise(setImmediate);},move,tick,timers,shell,nodes,document,window,toggle:()=>messageListener({type:'toggle-dock'}),settings:s=>storageListener({settings:{newValue:s}},'local')};
 }
 test('edge dwell cancels on departure and can reveal repeatedly',async()=>{
   const s=await setup();s.move(500,799);assert.equal(s.shell.dataset.visible,'false');s.move(500,500);s.tick(100);assert.equal(s.shell.dataset.visible,'false');
@@ -76,4 +76,18 @@ test('unpinning a running dock app moves it to the temporary section',async()=>{
   s.nodes['.context-menu'].children[1].dispatch('click');await new Promise(setImmediate);
   const apps=s.nodes['.strip'].children.filter(b=>b.className==='app');
   assert.equal(apps.at(-1).dataset.appId,'gmail');assert.equal(apps.filter(b=>b.dataset.appId==='gmail').length,1);
+});
+
+test('dock drag-and-drop persists insertion and never launches the dragged app',async()=>{
+  const s=await setup();s.toggle();
+  const apps=s.nodes['.strip'].children.filter(b=>b.className==='app');
+  apps.forEach((b,i)=>b.getBoundingClientRect=()=>({left:200+i*60,width:56,right:256+i*60}));
+  const gemini=apps.find(b=>b.dataset.appId==='gemini');assert.equal(gemini.draggable,true);
+  const dataTransfer={setData(){}};
+  gemini.dispatch('dragstart',{dataTransfer});
+  s.nodes['.strip'].dispatch('dragover',{preventDefault(){},dataTransfer,clientX:201});
+  s.nodes['.strip'].dispatch('drop',{preventDefault(){}});await new Promise(setImmediate);
+  assert.equal(s.requests.find(r=>r.type==='reorder').beforeId,'gmail');
+  assert.equal(s.nodes['.strip'].children[0].dataset.appId,'gemini');
+  gemini.dispatch('click',{preventDefault(){}});assert.equal(s.requests.some(r=>r.type==='launch'),false);
 });

@@ -15,7 +15,13 @@ globalThis.GDock = (() => {
     ['photos','Photos','https://photos.google.com/','photos.google.com','/',svg('<path fill="#ea4335" d="M24 24V4A10 10 0 0 1 34 14v10z"/><path fill="#4285f4" d="M24 24h20a10 10 0 0 1-10 10H24z"/><path fill="#34a853" d="M24 24v20a10 10 0 0 1-10-10V24z"/><path fill="#fbbc04" d="M24 24H4a10 10 0 0 1 10-10h10z"/>')],
     ['maps','Maps','https://www.google.com/maps','www.google.com','/maps',svg('<path fill="#34a853" d="M24 3C4 3 5 24 14 34l10 12 10-12C44 22 43 3 24 3Z"/><path fill="#4285f4" d="M11 9C18-1 33 2 38 12L25 26z"/><path fill="#fbbc04" d="M11 9l14 17-11 8C5 24 5 16 11 9Z"/><circle cx="24" cy="18" r="6" fill="white"/>')],
     ['youtube','YouTube','https://www.youtube.com/','www.youtube.com','/',svg('<rect x="2" y="10" width="44" height="29" rx="10" fill="#ff0033"/><path fill="white" d="M20 17v15l13-7.5z"/>')],
-    ['gemini','Gemini','https://gemini.google.com/','gemini.google.com','/',svg('<defs><linearGradient id="gem"><stop stop-color="#4285f4"/><stop offset="1" stop-color="#a142f4"/></linearGradient></defs><path fill="url(#gem)" d="M24 1C27 16 32 21 47 24 32 27 27 32 24 47 21 32 16 27 1 24 16 21 21 16 24 1Z"/>')]
+    ['gemini','Gemini','https://gemini.google.com/','gemini.google.com','/',svg('<path fill="#4285f4" d="M24 1C27 16 32 21 47 24L24 24Z"/><path fill="#8861df" d="M47 24C32 27 27 32 24 47L24 24Z"/><path fill="#a142f4" d="M24 47C21 32 16 27 1 24L24 24Z"/><path fill="#669df6" d="M1 24C16 21 21 16 24 1L24 24Z"/>')],
+    ['payments','Payments','https://payments.google.com/','payments.google.com','/',svg('<rect x="3" y="9" width="42" height="30" rx="6" fill="#4285f4"/><path fill="#174ea6" d="M3 17h42v7H3z"/><rect x="9" y="29" width="9" height="5" rx="1" fill="#fbbc04"/>')],
+    ['passwords','Passwords','https://passwords.google.com/','passwords.google.com','/',svg('<path fill="#4285f4" d="M27 16h19v8h-5v6h-7v-6h-7z"/><circle cx="16" cy="20" r="13" fill="#fbbc04"/><circle cx="16" cy="20" r="5" fill="white"/>')],
+    ['account','Google Account','https://myaccount.google.com/','myaccount.google.com','/',svg('<circle cx="24" cy="24" r="22" fill="#4285f4"/><circle cx="24" cy="18" r="8" fill="white"/><path fill="white" d="M9 39a15 15 0 0 1 30 0Z"/>')],
+    ['contacts','Contacts','https://contacts.google.com/','contacts.google.com','/',svg('<rect x="6" y="3" width="36" height="42" rx="6" fill="#4285f4"/><circle cx="24" cy="17" r="7" fill="white"/><path fill="white" d="M13 35a11 11 0 0 1 22 0Z"/>')],
+    ['one','Google One','https://one.google.com/','one.google.com','/',svg('<path fill="#4285f4" d="M13 15L26 3h7v42H22V17l-4 5Z"/><path fill="#ea4335" d="M26 3h7v10H22z"/><path fill="#34a853" d="M22 32h11v13H22z"/><path fill="#fbbc04" d="M22 23h11v9H22z"/>')]
+
   ].map(([id,name,url,host,path,icon]) => ({id,name,url,host,path,icon}));
   const defaults = {enabled:true, autoHide:true, size:46, triggerHeight:24, theme:'auto', reuseTabs:true, dockApps:['gmail','calendar','drive','docs','sheets','meet','keep','youtube','gemini']};
   function normalize(raw = {}) {
@@ -28,7 +34,7 @@ globalThis.GDock = (() => {
     return s;
   }
   function matches(app, url) {
-    try { const u = new URL(url); return u.protocol === 'https:' && u.hostname === app.host && u.pathname.startsWith(app.path); } catch { return false; }
+    try { const u = new URL(url); return u.protocol === 'https:' && (u.hostname === app.host || (app.id === 'payments' && u.hostname === 'pay.google.com')) && u.pathname.startsWith(app.path); } catch { return false; }
   }
   return {apps,defaults,normalize,matches};
 })();

@@ -13,6 +13,13 @@ function changeSettings(message) {
       if (message.keep) ids.push(message.appId);
       // Keeping an already-pinned app must not move it to the end.
       if (!message.keep || !config.dockApps.includes(message.appId)) config.dockApps = ids;
+    } else if (message.type === 'reorder') {
+      if (!config.dockApps.includes(message.appId)) throw new Error('Only pinned apps can be reordered');
+      if (message.beforeId === message.appId) return {ok:true,settings:config};
+      const ids=config.dockApps.filter(id=>id!==message.appId);
+      const index=message.beforeId == null ? ids.length : ids.indexOf(message.beforeId);
+      if (index < 0) throw new Error('Drop target is no longer pinned');
+      ids.splice(index,0,message.appId); config.dockApps=ids;
     } else {
       for (const key of Object.keys(GDock.defaults)) {
         if (Object.hasOwn(message.patch || {}, key)) config[key] = message.patch[key];
@@ -52,33 +59,51 @@ async function groupResult(tab, reveal) {
   try { await groupAppTab(tab,reveal); return {ok:true}; }
   catch (error) { return {ok:true,warning:'App opened, but grouping failed: '+error.message}; }
 }
-async function launch(message, sender) {
+// Same-app launches are serialized, including clicks from different content scripts.
+const appQueues=new Map();
+function launch(message,sender) {
+  const task=(appQueues.get(message.appId)||Promise.resolve()).catch(()=>{}).then(()=>launchOne(message,sender));
+  appQueues.set(message.appId,task);
+  task.finally(()=>{if(appQueues.get(message.appId)===task)appQueues.delete(message.appId);}).catch(()=>{});
+  return task;
+}
+function appTabMatches(app,tab) { return matches(app,tab.url) || matches(app,tab.pendingUrl); }
+function isGoogleSignIn(tab) {
+  try { return new URL(tab.url || tab.pendingUrl).hostname === 'accounts.google.com'; } catch { return false; }
+}
+async function remember(app,tab) { await chrome.storage.session.set({['appTab:'+app.id]:tab.id}); }
+async function launchOne(message, sender) {
   const app = apps.find(a => a.id === message.appId);
   if (!app) throw new Error('Unknown app');
   const config = await settings();
   const windowId = sender.tab?.windowId ?? (await chrome.windows.getLastFocused()).id;
   if (config.reuseTabs && !message.newTab) {
-    const tabs = (await chrome.tabs.query({})).filter(t=>matches(app,t.url || t.pendingUrl));
-    tabs.sort((a,b) => Number(b.windowId === windowId)-Number(a.windowId === windowId) || (b.lastAccessed || 0)-(a.lastAccessed || 0));
+    const key='appTab:'+app.id;
+    const remembered=(await chrome.storage.session.get(key))[key];
+    const all=await chrome.tabs.query({});
+    const tabs=all.filter(t=>appTabMatches(app,t) || (t.id===remembered && isGoogleSignIn(t)));
+    tabs.sort((a,b) => Number(b.id===remembered)-Number(a.id===remembered) || Number(b.windowId === windowId)-Number(a.windowId === windowId) || (b.lastAccessed || 0)-(a.lastAccessed || 0));
     if (tabs.length) {
       let activated;
       try { activated = await chrome.tabs.update(tabs[0].id,{active:true}); }
       catch { /* A closed tab should fall back to creating a new one. */ }
       if (activated) {
         await chrome.windows.update(activated.windowId,{focused:true});
+        await remember(app,activated);
         return groupResult(activated,true);
       }
     }
   }
   const tab = await chrome.tabs.create({url:app.url,windowId,active:!message.background});
+  if (!message.newTab) await remember(app,tab);
   return groupResult(tab,!message.background);
 }
 async function handle(message,sender) {
   if (message.type === 'launch') return launch(message,sender);
-  if (message.type === 'pin' || message.type === 'settings-patch') return changeSettings(message);
+  if (message.type === 'pin' || message.type === 'settings-patch' || message.type === 'reorder') return changeSettings(message);
   if (message.type === 'running') {
     const tabs = await chrome.tabs.query({});
-    return {ids:apps.filter(a=>tabs.some(t=>matches(a,t.url || t.pendingUrl))).map(a=>a.id)};
+    return {ids:apps.filter(a=>tabs.some(t=>appTabMatches(a,t))).map(a=>a.id)};
   }
   if (message.type === 'options') { await chrome.runtime.openOptionsPage(); return {ok:true}; }
   throw new Error('Unknown request');
