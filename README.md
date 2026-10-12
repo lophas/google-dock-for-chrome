@@ -43,7 +43,7 @@ Open **Settings** from the app menu or toolbar launcher to choose favorites, ico
 
 Use **Backup & restore** in Settings to download your pinned apps and their order as a JSON file, or restore a saved list. Restoring replaces the favorites without changing appearance or behavior settings.
 
-At **100% transparency**, the dock background blur is also disabled.
+The dock uses a subtle **4 px blur**, including at 100% transparency.
 
 Change the keyboard shortcut at `chrome://extensions/shortcuts`.
 

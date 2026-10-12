@@ -3,7 +3,7 @@
 .shell{--panel-rgb:247,249,253;--panel:rgba(247,249,253,.88);--text:#202124;--hover:rgba(60,64,67,.1);--border:rgba(255,255,255,.7);--size:46px;color:var(--text);font:13px system-ui,sans-serif}
 @media(prefers-color-scheme:dark){.shell:not([data-theme=light]){--panel-rgb:35,38,44;--panel:rgba(35,38,44,.9);--text:#f1f3f4;--hover:rgba(255,255,255,.12);--border:rgba(255,255,255,.15)}}
 .shell[data-theme=dark]{--panel-rgb:35,38,44;--panel:rgba(35,38,44,.9);--text:#f1f3f4;--hover:rgba(255,255,255,.12);--border:rgba(255,255,255,.15)}
-.dock{position:fixed;left:50%;bottom:10px;display:flex;align-items:center;gap:3px;padding:9px 12px 7px;max-width:calc(100vw - 24px);border:1px solid var(--border);border-radius:23px;background:rgba(var(--panel-rgb),var(--dock-opacity,.88));backdrop-filter:blur(24px) saturate(1.5);box-shadow:0 10px 40px #0003;transform:translate(-50%,calc(100% + 24px));opacity:0;visibility:hidden;transition:transform .2s ease,opacity .2s,visibility .2s;pointer-events:none}
+.dock{position:fixed;left:50%;bottom:10px;display:flex;align-items:center;gap:3px;padding:9px 12px 7px;max-width:calc(100vw - 24px);border:1px solid var(--border);border-radius:23px;background:rgba(var(--panel-rgb),var(--dock-opacity,.88));backdrop-filter:blur(4px) saturate(1.5);box-shadow:0 10px 40px #0003;transform:translate(-50%,calc(100% + 24px));opacity:0;visibility:hidden;transition:transform .2s ease,opacity .2s,visibility .2s;pointer-events:none}
 .shell[data-visible=true] .dock{transform:translate(-50%,0);opacity:1;visibility:visible;pointer-events:auto}
 .strip{display:flex;align-items:center;gap:3px;min-width:0;overflow-x:auto;padding-top:14px;margin-top:-14px;scrollbar-width:none}.strip::-webkit-scrollbar{display:none}
 .app{position:relative;flex-shrink:0;width:calc(var(--size) + 10px);height:calc(var(--size) + 16px);border:0;background:none;color:inherit;border-radius:14px;padding:5px;display:flex;align-items:flex-start;justify-content:center}
@@ -19,4 +19,3 @@
 
 .app[data-active=true]{background:rgba(66,133,244,.17);box-shadow:inset 0 0 0 1px rgba(66,133,244,.45)}.app[data-active=true]:after{content:'';position:absolute;bottom:0;width:14px;height:4px;border-radius:4px;background:#4285f4}
 
-.shell[data-transparent=true] .dock{backdrop-filter:none}

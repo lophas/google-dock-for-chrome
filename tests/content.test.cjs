@@ -134,8 +134,3 @@ test('app-menu launch closes its local and shared UI, including middle click',as
     await new Promise(setImmediate);assert.ok(s.requests.some(r=>r.type==='launch'&&r.appId==='photos'));
   }
 });
-test('fully transparent dock disables blur and restores it below 100 percent',async()=>{
-  const s=await setup();s.settings({transparency:100});assert.equal(s.shell.dataset.transparent,'true');
-  s.settings({transparency:99});assert.equal(s.shell.dataset.transparent,'false');
-  const css=fs.readFileSync(path.join(__dirname,'..','dock.css'),'utf8');assert.match(css,/data-transparent=true\] \.dock\{backdrop-filter:none\}/);
-});

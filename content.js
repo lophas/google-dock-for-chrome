@@ -119,7 +119,7 @@
     markRunning();
   }
   function apply(raw,initial=false) {
-    config=GDock.normalize(raw); shell.dataset.theme=config.theme; shell.style.setProperty('--size',config.size+'px');shell.style.setProperty('--dock-opacity',String(1-config.transparency/100));shell.dataset.transparent=String(config.transparency===100);
+    config=GDock.normalize(raw); shell.dataset.theme=config.theme; shell.style.setProperty('--size',config.size+'px');shell.style.setProperty('--dock-opacity',String(1-config.transparency/100));
     renderDock(); renderGrid();
     setVisible(!config.autoHide || (!initial && visible));
   }
@@ -139,7 +139,7 @@
       const ids=state.ids || [];
       const runningChanged=ids.join(',')!==running.join(',');
       config=next;running=ids;activeId=state.activeId || null;
-      shell.dataset.theme=config.theme;shell.style.setProperty('--size',config.size+'px');shell.style.setProperty('--dock-opacity',String(1-config.transparency/100));shell.dataset.transparent=String(config.transparency===100);
+      shell.dataset.theme=config.theme;shell.style.setProperty('--size',config.size+'px');shell.style.setProperty('--dock-opacity',String(1-config.transparency/100));
       if(settingsChanged || runningChanged || !strip.children.length)renderDock();else markRunning();
       const ui=state.ui || {};
       if(typeof ui.search==='string' && search.value!==ui.search){search.value=ui.search;renderGrid();}
