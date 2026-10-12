@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "Google Dock for Chrome",
+  "version": "0.1.0",
+  "description": "A floating, auto-hiding dock for your Google apps.",
+  "permissions": [
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "shared.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "dock.css"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    }
+  ],
+  "action": {
+    "default_title": "Google Dock",
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html",
+  "commands": {
+    "toggle-dock": {
+      "suggested_key": {
+        "default": "Alt+Shift+G"
+      },
+      "description": "Show or hide Google Dock"
+    }
+  }
+}
