@@ -43,13 +43,15 @@ Open **Settings** from the app menu or toolbar launcher to choose favorites, ico
 
 Use **Backup & restore** in Settings to download your pinned apps and their order as a JSON file, or restore a saved list. Restoring replaces the favorites without changing appearance or behavior settings.
 
+At **100% transparency**, the dock background blur is also disabled.
+
 Change the keyboard shortcut at `chrome://extensions/shortcuts`.
 
 ## Good to know
 
 - On Chrome settings, browser error pages, the Chrome Web Store and the built-in PDF viewer, use the **toolbar launcher** instead of the webpage dock.
 - The dock stays hidden during webpage fullscreen.
-- New app tabs use your default Google account. An existing tab may belong to another account.
+- To use another Google account for Photos or another app, select the account inside that app first. In Settings → **Google accounts per app**, choose the app and click **Remember last-used app account**. The account must already be signed in within this Chrome profile. If sign-in order changes, remember the account again. Apps whose URL does not identify the account cannot be saved this way.
 - To update, replace the extension files, click **Reload** at `chrome://extensions`, then refresh website tabs. Your settings are preserved.
 
 Settings stay on your device. No analytics; no access to mailbox, calendar or password contents.

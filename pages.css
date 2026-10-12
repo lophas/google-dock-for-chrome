@@ -4,3 +4,5 @@
 .backup-actions{display:flex;gap:12px;flex-wrap:wrap}#backup-status{font-size:13px;margin-bottom:0}button:disabled{cursor:default;opacity:.5}
 
 input[type=range]{flex:1;min-width:70px;accent-color:#4285f4}output{min-width:4ch;text-align:right}
+
+#account-status{overflow-wrap:anywhere;font-size:13px}

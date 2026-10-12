@@ -46,7 +46,7 @@ function controls(){
   document.getElementById('transparency-value').textContent=config.transparency+'%';
 }
 (async()=>{
-  config=GDock.normalize((await chrome.storage.local.get('settings')).settings);rebuildOrder();controls();render();
+  config=GDock.normalize((await chrome.storage.local.get('settings')).settings);rebuildOrder();controls();render();accountLabel();
   for(const id of fields)document.getElementById(id).onchange=e=>{
     const value=e.target.type==='checkbox'?e.target.checked:['size','triggerHeight','transparency'].includes(id)?Number(e.target.value):e.target.value;
     config[id]=value;save({[id]:value});
@@ -89,3 +89,16 @@ backupFile.addEventListener('change',async()=>{
 });
 
 document.getElementById('transparency').addEventListener('input',e=>document.getElementById('transparency-value').textContent=e.target.value+'%');
+
+const accountApp=document.getElementById('account-app'),accountStatus=document.getElementById('account-status');
+for(const app of GDock.apps){const option=document.createElement('option');option.value=app.id;option.textContent=app.name;accountApp.append(option);}
+function accountLabel(){const url=config.accountUrls[accountApp.value];accountStatus.textContent=url?'Saved account: '+url:'Automatic account';}
+accountApp.addEventListener('change',accountLabel);
+async function changeAccount(type){
+  const buttons=[document.getElementById('remember-account'),document.getElementById('reset-account')];buttons.forEach(b=>b.disabled=true);
+  try{await pendingSave;const r=await chrome.runtime.sendMessage({type,appId:accountApp.value});if(r.error)throw new Error(r.error);config=GDock.normalize(r.settings);accountLabel();}
+  catch(e){accountStatus.textContent=e.message;}finally{buttons.forEach(b=>b.disabled=false);}
+}
+document.getElementById('remember-account').onclick=()=>changeAccount('remember-account');
+document.getElementById('reset-account').onclick=()=>changeAccount('reset-account');
+accountLabel();

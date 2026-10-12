@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Google Dock for Chrome",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A floating, auto-hiding dock for your Google apps.",
   "permissions": [
     "storage",

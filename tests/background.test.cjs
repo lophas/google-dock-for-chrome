@@ -205,3 +205,20 @@ test('transparency supports both endpoints and survives pinned-list restore',asy
   await s.send({type:'settings-patch',patch:{dockApps:['gemini','gmail']}});assert.equal(s.stored().transparency,100);
   for(const value of [-1,101,'50',null])assert.equal(s.ctx.GDock.normalize({transparency:value}).transparency,12);
 });
+test('Photos remembers its last-used account and never reuses another account tab',async()=>{
+  const s=setup([{id:1,windowId:1,url:'https://photos.google.com/u/0/',lastAccessed:1},{id:2,windowId:1,url:'https://photos.google.com/u/1/album/abc',lastAccessed:20}]);
+  await s.send({type:'remember-account',appId:'photos'});assert.equal(s.stored().accountUrls.photos,'https://photos.google.com/u/1/');
+  await s.send({type:'launch',appId:'photos'});assert.equal(s.calls[0][1],2);
+  s.tabs.splice(s.tabs.findIndex(t=>t.id===2),1);await s.send({type:'launch',appId:'photos'});
+  assert.equal(s.calls.find(c=>c[0]==='create')[1].url,'https://photos.google.com/u/1/');
+});
+test('account choice applies only to one app and close respects the choice',async()=>{
+  const s=setup([{id:1,windowId:1,url:'https://photos.google.com/u/0/'},{id:2,windowId:1,url:'https://photos.google.com/u/1/'}],{accountUrls:{photos:'https://photos.google.com/u/1/'}});
+  await s.send({type:'close',appId:'photos'});assert.deepEqual(s.tabs.map(t=>t.id),[1]);
+  assert.equal((await s.send({type:'state-get'})).ids.includes('photos'),false);
+  await s.send({type:'launch',appId:'gmail'});assert.equal(s.calls.find(c=>c[0]==='create')[1].url,'https://mail.google.com/mail/u/0/');
+});
+test('account remembering rejects unidentifiable URLs and automatic resets the override',async()=>{
+  const s=setup([{id:1,windowId:1,url:'https://photos.google.com/'}]);assert.match((await s.send({type:'remember-account',appId:'photos'})).error,/does not identify/);
+  const p=setup([],{accountUrls:{photos:'https://photos.google.com/u/1/'}});await p.send({type:'reset-account',appId:'photos'});assert.equal(p.stored().accountUrls.photos,undefined);
+});

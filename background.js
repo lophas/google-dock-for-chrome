@@ -13,6 +13,21 @@ function changeSettings(message) {
       if (message.keep) ids.push(message.appId);
       // Keeping an already-pinned app must not move it to the end.
       if (!message.keep || !config.dockApps.includes(message.appId)) config.dockApps = ids;
+    } else if(message.type==='remember-account' || message.type==='reset-account'){
+      const app=apps.find(a=>a.id===message.appId);if(!app)throw new Error('Unknown app');
+      config.accountUrls={...config.accountUrls};
+      if(message.type==='reset-account')delete config.accountUrls[app.id];
+      else{
+        const tabs=(await chrome.tabs.query({})).filter(t=>matches(app,t.url)).sort((a,b)=>(b.lastAccessed||0)-(a.lastAccessed||0));
+        if(!tabs.length)throw new Error('Open '+app.name+' and select your account first.');
+        const tab=tabs[0],key=GDock.accountKey(tab.url);
+        if(key===null)throw new Error('This app tab URL does not identify its Google account. Switch accounts in the app, then try again.');
+        const chosen=new URL(tab.url),launch=new URL(app.url);
+        if(/\/u\/\d+(?:\/|$)/.test(launch.pathname))launch.pathname=launch.pathname.replace(/\/u\/\d+/, '/u/'+key);
+        else if(/^\/u\/\d+(?:\/|$)/.test(chosen.pathname))launch.pathname='/u/'+key+'/';
+        else launch.searchParams.set('authuser',key);
+        config.accountUrls[app.id]=launch.href;await remember(app,tab);
+      }
     } else if (message.type === 'reorder') {
       if (!config.dockApps.includes(message.appId)) throw new Error('Only pinned apps can be reordered');
       if (message.beforeId === message.appId) return {ok:true,settings:config};
@@ -121,7 +136,7 @@ async function launchOne(message, sender) {
     const key='appTab:'+app.id;
     const remembered=(await chrome.storage.session.get(key))[key];
     const all=await chrome.tabs.query({});
-    const tabs=all.filter(t=>appTabMatches(app,t) || (t.id===remembered && isGoogleSignIn(t)));
+    const tabs=all.filter(t=>(GDock.accountMatches(app,t.url,config)||GDock.accountMatches(app,t.pendingUrl,config)) || (t.id===remembered && isGoogleSignIn(t)));
     tabs.sort((a,b) => Number(b.id===remembered)-Number(a.id===remembered) || Number(b.windowId === windowId)-Number(a.windowId === windowId) || (b.lastAccessed || 0)-(a.lastAccessed || 0));
     if (tabs.length) {
       let activated;
@@ -134,7 +149,7 @@ async function launchOne(message, sender) {
       }
     }
   }
-  const tab = await chrome.tabs.create({url:app.url,windowId,active:!message.background});
+  const tab = await chrome.tabs.create({url:config.accountUrls[app.id] || app.url,windowId,active:!message.background});
   if (!message.newTab) await remember(app,tab);
   return groupResult(tab,!message.background);
 }
@@ -143,7 +158,8 @@ async function closeApp(message,sender) {
     const app=apps.find(a=>a.id===message.appId);if(!app)throw new Error('Unknown app');
     const windowId=sender.tab?.windowId ?? (await chrome.windows.getLastFocused()).id;
     const remembered=(await chrome.storage.session.get('appTab:'+app.id))['appTab:'+app.id];
-    const tabs=(await chrome.tabs.query({})).filter(t=>appTabMatches(app,t)||(t.id===remembered&&isGoogleSignIn(t)));
+    const config=await settings();
+    const tabs=(await chrome.tabs.query({})).filter(t=>GDock.accountMatches(app,t.url,config)||GDock.accountMatches(app,t.pendingUrl,config)||(t.id===remembered&&isGoogleSignIn(t)));
     tabs.sort((a,b)=>Number(b.active&&b.windowId===windowId)-Number(a.active&&a.windowId===windowId)||Number(b.id===remembered)-Number(a.id===remembered)||Number(b.windowId===windowId)-Number(a.windowId===windowId)||(b.lastAccessed||0)-(a.lastAccessed||0));
     if(tabs.length)await chrome.tabs.remove(tabs[0].id);
     await refreshDockState();return {ok:true};
@@ -172,7 +188,7 @@ function refreshDockState(uiPatch) {
     const tabs=uiPatch&&dockState ? dockTabs : await chrome.tabs.query({}), config=uiPatch&&dockState ? dockState.settings : await settings();
     dockTabs=tabs;
     const remembered=await chrome.storage.session.get(null);
-    const appFor=tab=>apps.find(a=>appTabMatches(a,tab)) || (isGoogleSignIn(tab)?apps.find(a=>remembered['appTab:'+a.id]===tab.id):undefined);
+    const appFor=tab=>apps.find(a=>GDock.accountMatches(a,tab.url,config)||GDock.accountMatches(a,tab.pendingUrl,config)) || (isGoogleSignIn(tab)?apps.find(a=>remembered['appTab:'+a.id]===tab.id):undefined);
     const ids=apps.filter(a=>tabs.some(t=>appFor(t)?.id===a.id)).map(a=>a.id);
     const activeByWindow={};
     tabs.filter(t=>t.active).forEach(t=>activeByWindow[t.windowId]=appFor(t)?.id || null);
@@ -203,7 +219,7 @@ function scheduleStateRefresh(){
 async function handle(message,sender) {
   if (message.type === 'launch') return launch(message,sender);
   if (message.type === 'close') return closeApp(message,sender);
-  if (message.type === 'pin' || message.type === 'settings-patch' || message.type === 'reorder') return changeSettings(message);
+  if (message.type === 'pin' || message.type === 'settings-patch' || message.type === 'reorder' || message.type==='remember-account' || message.type==='reset-account') return changeSettings(message);
   if(message.type==='state-get' || message.type==='running'){
     await ensureDockState();
     const windowId=sender.tab?.windowId ?? (await chrome.windows.getLastFocused()).id;

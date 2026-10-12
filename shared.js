@@ -23,7 +23,7 @@ globalThis.GDock = (() => {
     ['one','Google One','https://one.google.com/','one.google.com','/',svg('<path fill="#4285f4" d="M13 15L26 3h7v42H22V17l-4 5Z"/><path fill="#ea4335" d="M26 3h7v10H22z"/><path fill="#34a853" d="M22 32h11v13H22z"/><path fill="#fbbc04" d="M22 23h11v9H22z"/>')]
 
   ].map(([id,name,url,host,path,icon]) => ({id,name,url,host,path,icon}));
-  const defaults = {enabled:true, autoHide:true, size:46, triggerHeight:24, transparency:12, theme:'auto', reuseTabs:true, dockApps:['gmail','calendar','drive','docs','sheets','meet','keep','youtube','gemini']};
+  const defaults = {enabled:true, autoHide:true, size:46, triggerHeight:24, transparency:12, theme:'auto', reuseTabs:true, accountUrls:{}, dockApps:['gmail','calendar','drive','docs','sheets','meet','keep','youtube','gemini']};
   function normalize(raw = {}) {
     const s = {...defaults,...raw};
     for (const k of ['enabled','autoHide','reuseTabs']) s[k] = typeof s[k] === 'boolean' ? s[k] : defaults[k];
@@ -32,10 +32,19 @@ globalThis.GDock = (() => {
     s.transparency = Number.isFinite(s.transparency) && s.transparency>=0 && s.transparency<=100 ? Math.round(s.transparency) : defaults.transparency;
     s.theme = ['auto','light','dark'].includes(s.theme) ? s.theme : 'auto';
     s.dockApps = Array.isArray(s.dockApps) ? [...new Set(s.dockApps)].filter(id=>apps.some(a=>a.id===id)) : [...defaults.dockApps];
+    s.accountUrls=Object.fromEntries(Object.entries(s.accountUrls || {}).filter(([id,url])=>{const app=apps.find(a=>a.id===id);return app && typeof url==='string' && matches(app,url) && accountKey(url)!==null;}));
     return s;
   }
   function matches(app, url) {
     try { const u = new URL(url); return u.protocol === 'https:' && (u.hostname === app.host || (app.id === 'payments' && u.hostname === 'pay.google.com')) && u.pathname.startsWith(app.path); } catch { return false; }
   }
-  return {apps,defaults,normalize,matches};
+  function accountKey(url){
+    try{const u=new URL(url),path=u.pathname.match(/\/u\/(\d+)(?:\/|$)/);return path?path[1]:u.searchParams.get('authuser');}catch{return null;}
+  }
+  function accountMatches(app,tabUrl,config){
+    if(!matches(app,tabUrl))return false;
+    const preferred=config.accountUrls[app.id];if(!preferred)return true;
+    return (accountKey(tabUrl) ?? '0')===accountKey(preferred);
+  }
+  return {apps,defaults,normalize,matches,accountKey,accountMatches};
 })();
