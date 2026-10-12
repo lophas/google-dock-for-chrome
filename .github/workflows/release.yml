@@ -24,7 +24,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           VERSION=$(node -p "require('./manifest.json').version")
-          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$VERSION" != "1.0.3" ]; then exit 0; fi
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$VERSION" != "1.0.4" ]; then exit 0; fi
           TAG="v$VERSION"
           if gh release view "$TAG" >/dev/null 2>&1; then exit 0; fi
           PACKAGE="google-dock-for-chrome-$VERSION"
@@ -33,9 +33,8 @@ jobs:
           cp -R icons "$PACKAGE/"
           zip -qr "$PACKAGE.zip" "$PACKAGE"
           cat > release-notes.md <<'NOTES'
-          - At 100% transparency, dock background blur is disabled.
-          - Remember a different signed-in Google account for each app from its last-used tab, including Photos.
-          - Tab reuse, running indicators and Close respect the remembered account.
+          - Remembered-account apps opened in another window are brought into the window where you use the dock.
+          - The app joins that window’s Google Dock tab group, without opening a duplicate tab.
 
           **Install:** Download the attached ZIP, extract it, then select the extracted folder using **Load unpacked** at `chrome://extensions` with **Developer mode** enabled. Refresh existing website tabs.
 

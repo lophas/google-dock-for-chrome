@@ -139,8 +139,20 @@ async function launchOne(message, sender) {
     const tabs=all.filter(t=>(GDock.accountMatches(app,t.url,config)||GDock.accountMatches(app,t.pendingUrl,config)) || (t.id===remembered && isGoogleSignIn(t)));
     tabs.sort((a,b) => Number(b.id===remembered)-Number(a.id===remembered) || Number(b.windowId === windowId)-Number(a.windowId === windowId) || (b.lastAccessed || 0)-(a.lastAccessed || 0));
     if (tabs.length) {
+      let target=tabs[0];
+      if(config.accountUrls[app.id] && target.windowId!==windowId){
+        const originalGroup=target.groupId;
+        try{
+          if(originalGroup>=0)await chrome.tabs.ungroup(target.id);
+          const moved=await chrome.tabs.move(target.id,{windowId,index:target.pinned?0:-1});
+          target=Array.isArray(moved)?moved[0]:moved;
+        }catch(error){
+          if(originalGroup>=0){try{await chrome.tabs.group({tabIds:[tabs[0].id],groupId:originalGroup});}catch{}}
+          throw new Error('Could not bring the app tab into this window: '+error.message);
+        }
+      }
       let activated;
-      try { activated = await chrome.tabs.update(tabs[0].id,{active:true}); }
+      try { activated = await chrome.tabs.update(target.id,{active:true}); }
       catch { /* A closed tab should fall back to creating a new one. */ }
       if (activated) {
         await chrome.windows.update(activated.windowId,{focused:true});

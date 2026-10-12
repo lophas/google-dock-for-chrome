@@ -51,7 +51,7 @@ Change the keyboard shortcut at `chrome://extensions/shortcuts`.
 
 - On Chrome settings, browser error pages, the Chrome Web Store and the built-in PDF viewer, use the **toolbar launcher** instead of the webpage dock.
 - The dock stays hidden during webpage fullscreen.
-- To use another Google account for Photos or another app, select the account inside that app first. In Settings → **Google accounts per app**, choose the app and click **Remember last-used app account**. The account must already be signed in within this Chrome profile. If sign-in order changes, remember the account again. Apps whose URL does not identify the account cannot be saved this way.
+- To use another Google account for Photos or another app, select the account inside that app first. In Settings → **Google accounts per app**, choose the app and click **Remember last-used app account**. The account must already be signed in within this Chrome profile. If sign-in order changes, remember the account again. A remembered-account app tab in another window is brought into the window where you use the dock. Separate Chrome profiles cannot share app tabs or sign-in sessions. Apps whose URL does not identify the account cannot be saved this way.
 - To update, replace the extension files, click **Reload** at `chrome://extensions`, then refresh website tabs. Your settings are preserved.
 
 Settings stay on your device. No analytics; no access to mailbox, calendar or password contents.

@@ -25,7 +25,8 @@ function setup(tabs=[],settings={}) {
       update:async(id,opts)=>{calls.push(['activate',id]);if(id===999)throw Error('Closed');const tab=tabs.find(t=>t.id===id);if(opts.active)tabs.filter(t=>t.windowId===tab.windowId).forEach(t=>t.active=t.id===id);return tab;},
       create:async opts=>{calls.push(['create',opts]);const tab={id:nextTab++,index:tabs.filter(t=>t.windowId===opts.windowId).length,...opts};tabs.push(tab);return tab;},
       remove:async id=>{const i=tabs.findIndex(t=>t.id===id);if(i>=0)tabs.splice(i,1);},
-      move:async(id,opts)=>{moveCalls.push([id,opts.index]);return move(id,opts.index);},
+      ungroup:async id=>{tabs.find(t=>t.id===id).groupId=-1;},
+      move:async(id,opts)=>{moveCalls.push([id,opts.index]);if(opts.windowId!==undefined){const t=tabs.find(t=>t.id===id);t.windowId=opts.windowId;t.index=tabs.filter(x=>x.id!==id&&x.windowId===opts.windowId).length;return t;}return move(id,opts.index);},
       group:async opts=>{
         groupCalls.push(opts);let id=opts.groupId;
         if(id===undefined){id=nextGroup++;groups.push({id,windowId:opts.createProperties.windowId});}
@@ -221,4 +222,17 @@ test('account choice applies only to one app and close respects the choice',asyn
 test('account remembering rejects unidentifiable URLs and automatic resets the override',async()=>{
   const s=setup([{id:1,windowId:1,url:'https://photos.google.com/'}]);assert.match((await s.send({type:'remember-account',appId:'photos'})).error,/does not identify/);
   const p=setup([],{accountUrls:{photos:'https://photos.google.com/u/1/'}});await p.send({type:'reset-account',appId:'photos'});assert.equal(p.stored().accountUrls.photos,undefined);
+});
+test('remembered Photos account tab moves from a separate window into the caller window',async()=>{
+  const s=setup([{id:10,windowId:2,groupId:7,url:'https://photos.google.com/u/1/'}],{accountUrls:{photos:'https://photos.google.com/u/1/'}});
+  s.groups.push({id:7,windowId:2,title:'Old group'});
+  await s.send({type:'launch',appId:'photos'},1);
+  assert.equal(s.tabs[0].windowId,1);assert.equal(s.groups.find(g=>g.title==='Google Dock').windowId,1);
+  assert.equal(s.calls.some(c=>c[0]==='create'),false);assert.deepEqual(s.calls,[['activate',10],['focus',1]]);
+});
+test('failed window transfer restores the original group and never creates a duplicate',async()=>{
+  const s=setup([{id:10,windowId:2,groupId:7,url:'https://photos.google.com/u/1/'}],{accountUrls:{photos:'https://photos.google.com/u/1/'}});
+  s.chrome.tabs.move=async()=>{throw Error('Window cannot accept tab');};
+  const result=await s.send({type:'launch',appId:'photos'},1);
+  assert.match(result.error,/Could not bring/);assert.equal(s.tabs[0].groupId,7);assert.equal(s.calls.some(c=>c[0]==='create'),false);
 });
