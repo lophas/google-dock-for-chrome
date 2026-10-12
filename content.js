@@ -10,14 +10,15 @@
   const dock=shell.querySelector('.dock'), launcher=shell.querySelector('.launcher'), search=shell.querySelector('.search');
   const menu=shell.querySelector('.context-menu');
   let menuOrigin, draggedApp, dropBefore, suppressClick=false;
-  let config=GDock.normalize(), visible=false, dwell, hideTimer, lastX=-1,lastY=-1, running=[], activeId=null, generation=0;
+  let config=GDock.normalize(), visible=false, dwell, hideTimer, lastX=-1,lastY=-1, running=[], activeId=null, revision=-1, applyingState=false;
   async function request(message) { const r=await chrome.runtime.sendMessage(message); if(r?.error) throw new Error(r.error); if(r?.warning) error({message:r.warning}); return r; }
   function error(e) { const status=shell.querySelector('.status'); status.textContent=e.message || 'Could not open app'; status.hidden=false; setTimeout(()=>status.hidden=true,3500); }
-  function setVisible(value) {
+  function saveUI(){if(!applyingState&&!document.hidden)request({type:'ui-patch',patch:{visible,launcherOpen:!launcher.hidden,search:search.value}}).catch(()=>{});}
+  function setVisible(value,share=true) {
     clearTimeout(dwell); dwell=undefined; cancelHide();
     visible=value && config.enabled && !document.fullscreenElement; shell.dataset.visible=String(visible);
     if (!visible) { launcher.hidden=true; closeMenu(false); if (root.activeElement) root.activeElement.blur(); }
-    else refreshRunning();
+    if(share)saveUI();
   }
   function cancelHide() { clearTimeout(hideTimer); hideTimer=undefined; }
   function hideLater() { if(hideTimer) return; if(config.autoHide && launcher.hidden && menu.hidden && !draggedApp && !dock.matches(':focus-within')) hideTimer=setTimeout(()=>{hideTimer=undefined;setVisible(false);},380); }
@@ -84,8 +85,9 @@
       catch(e) { error(e); }
       hideLater();
     });
-    const open=document.createElement('button'); open.setAttribute('role','menuitem'); open.textContent='Open New Tab';
-    open.addEventListener('click',()=>{closeMenu();request({type:'launch',appId:app.id,newTab:true}).catch(error);hideLater();});
+    const isOpen=running.includes(app.id);
+    const open=document.createElement('button'); open.setAttribute('role','menuitem'); open.textContent=isOpen?'Close':'Open';
+    open.addEventListener('click',()=>{closeMenu(false);request({type:isOpen?'close':'launch',appId:app.id}).catch(error);hideLater();});
     menu.append(pin,open); menu.hidden=false;
     const rect=origin.getBoundingClientRect();
     const x=event.clientX || rect.left, y=event.clientY || rect.top;
@@ -124,18 +126,25 @@
       if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
     });
   }
-  async function refreshRunning(){
-    const g=++generation;
+  function applyState(state) {
+    if(!state || state.revision<revision)return;
+    revision=state.revision ?? revision;applyingState=true;
     try {
-      const response=await request({type:'running'});
-      if(g===generation && Array.isArray(response.ids)) {
-        activeId=response.activeId || null;
-        const ids=response.ids.filter(id=>GDock.apps.some(a=>a.id===id));
-        if(ids.join(',')!==running.join(',')) { running=ids; renderDock(); }
-        else markRunning();
-      }
-    } catch {}
+      const next=GDock.normalize(state.settings);
+      const settingsChanged=JSON.stringify(next)!==JSON.stringify(config);
+      const ids=state.ids || [];
+      const runningChanged=ids.join(',')!==running.join(',');
+      config=next;running=ids;activeId=state.activeId || null;
+      shell.dataset.theme=config.theme;shell.style.setProperty('--size',config.size+'px');
+      if(settingsChanged || runningChanged || !strip.children.length)renderDock();else markRunning();
+      const ui=state.ui || {};
+      if(typeof ui.search==='string' && search.value!==ui.search){search.value=ui.search;renderGrid();}
+      setVisible(!config.autoHide || !!ui.visible,false);
+      launcher.hidden=!visible || !ui.launcherOpen;
+      if(!launcher.hidden)cancelHide();
+    } finally {applyingState=false;}
   }
+  async function refreshRunning(){try{applyState(await request({type:'state-get'}));}catch{}}
   function safeArea(x,y) {
     const r=dock.getBoundingClientRect(); return x>=r.left-22 && x<=r.right+22 && y>=r.top-22;
   }
@@ -151,19 +160,17 @@
   },{passive:true});
   dock.addEventListener('pointerenter',()=>cancelHide()); dock.addEventListener('pointerleave',hideLater);
   dock.addEventListener('focusin',()=>cancelHide()); dock.addEventListener('focusout',()=>setTimeout(hideLater,0));
-  shell.querySelector('.more').addEventListener('click',()=>{closeMenu(false);launcher.hidden=!launcher.hidden;cancelHide();if(!launcher.hidden){search.value='';renderGrid();search.focus();}else hideLater();});
+  shell.querySelector('.more').addEventListener('click',()=>{closeMenu(false);launcher.hidden=!launcher.hidden;cancelHide();if(!launcher.hidden){search.value='';renderGrid();search.focus();}else hideLater();saveUI();});
   shell.querySelector('.settings').addEventListener('click',()=>request({type:'options'}).catch(error));
-  search.addEventListener('input',renderGrid);
-  document.addEventListener('pointerdown',e=>{const path=e.composedPath();if(!menu.hidden&&!path.includes(menu)){closeMenu(false);hideLater();}if(!launcher.hidden&&!path.includes(host)){launcher.hidden=true;hideLater();}});
+  search.addEventListener('input',()=>{renderGrid();saveUI();});
+  document.addEventListener('pointerdown',e=>{const path=e.composedPath();if(!menu.hidden&&!path.includes(menu)){closeMenu(false);hideLater();}if(!launcher.hidden&&!path.includes(host)){launcher.hidden=true;hideLater();saveUI();}});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&visible){if(!menu.hidden){closeMenu();hideLater();}else setVisible(false);e.stopPropagation();}},true);
   document.documentElement.addEventListener('pointerleave',()=>{clearTimeout(dwell);dwell=undefined;hideLater();});
-  window.addEventListener('blur',()=>{if(config.autoHide&&!draggedApp)setVisible(false);});
-  window.addEventListener('focus',()=>{if(!config.autoHide)setVisible(true);});
+  window.addEventListener('blur',()=>{if(config.autoHide&&!draggedApp)setVisible(false,false);});
+  window.addEventListener('focus',()=>{refreshRunning();});
   document.addEventListener('fullscreenchange',()=>setVisible(!config.autoHide));
-  document.addEventListener('visibilitychange',()=>{if(document.hidden&&config.autoHide)setVisible(false);else if(visible)refreshRunning();});
-  chrome.runtime.onMessage.addListener(m=>{if(m.type==='toggle-dock')setVisible(!visible);else if(m.type==='dock-state-changed')refreshRunning();});
-  chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes.settings)apply(changes.settings.newValue);});
-  apply((await chrome.storage.local.get('settings')).settings,true);
-  // Refresh indicators only while the dock is open. A backgrounded tab does no polling.
-  setInterval(()=>{if(visible&&!document.hidden)refreshRunning();},4000);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&config.autoHide)setVisible(false,false);else if(!document.hidden)refreshRunning();});
+  chrome.runtime.onMessage.addListener(m=>{if(m.type==='toggle-dock')setVisible(!visible);else if(m.type==='dock-state')applyState(m.state);else if(m.type==='dock-state-changed')refreshRunning();});
+  renderGrid();
+  applyState(await request({type:'state-get'}));
 })().catch(()=>{ /* An old content script can lose its extension context after reload. */ });

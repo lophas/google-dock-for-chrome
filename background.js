@@ -28,6 +28,7 @@ function changeSettings(message) {
     const next = normalize(config);
     await chrome.storage.local.set({settings:next});
     await syncAllGroups().catch(()=>{});
+    await refreshDockState();
     return {ok:true, settings:next};
   });
   settingsQueue = task;
@@ -97,7 +98,7 @@ async function groupResult(tab, reveal) {
 // Same-app launches are serialized, including clicks from different content scripts.
 const appQueues=new Map();
 function launch(message,sender) {
-  const task=(appQueues.get(message.appId)||Promise.resolve()).catch(()=>{}).then(()=>launchOne(message,sender));
+  const task=(appQueues.get(message.appId)||Promise.resolve()).catch(()=>{}).then(async()=>{const result=await launchOne(message,sender);await refreshDockState();return result;});
   appQueues.set(message.appId,task);
   task.finally(()=>{if(appQueues.get(message.appId)===task)appQueues.delete(message.appId);}).catch(()=>{});
   return task;
@@ -133,14 +134,80 @@ async function launchOne(message, sender) {
   if (!message.newTab) await remember(app,tab);
   return groupResult(tab,!message.background);
 }
+async function closeApp(message,sender) {
+  const task=(appQueues.get(message.appId)||Promise.resolve()).catch(()=>{}).then(async()=>{
+    const app=apps.find(a=>a.id===message.appId);if(!app)throw new Error('Unknown app');
+    const windowId=sender.tab?.windowId ?? (await chrome.windows.getLastFocused()).id;
+    const remembered=(await chrome.storage.session.get('appTab:'+app.id))['appTab:'+app.id];
+    const tabs=(await chrome.tabs.query({})).filter(t=>appTabMatches(app,t)||(t.id===remembered&&isGoogleSignIn(t)));
+    tabs.sort((a,b)=>Number(b.active&&b.windowId===windowId)-Number(a.active&&a.windowId===windowId)||Number(b.id===remembered)-Number(a.id===remembered)||Number(b.windowId===windowId)-Number(a.windowId===windowId)||(b.lastAccessed||0)-(a.lastAccessed||0));
+    if(tabs.length)await chrome.tabs.remove(tabs[0].id);
+    await refreshDockState();return {ok:true};
+  });
+  appQueues.set(message.appId,task);
+  task.finally(()=>{if(appQueues.get(message.appId)===task)appQueues.delete(message.appId);}).catch(()=>{});
+  return task;
+}
+
+// One authoritative dock model. Page scripts are views, never tab scanners or state owners.
+// Session persistence keeps the model and per-window UI state when MV3 suspends the worker.
+let dockState, initializingState, dockTabs=[], stateQueue=Promise.resolve(), stateTimer;
+function stateForWindow(windowId) {
+  return {revision:dockState.revision,settings:dockState.settings,ids:dockState.ids,
+    activeId:dockState.activeByWindow[windowId] || null,
+    ui:dockState.uiByWindow[windowId] || {visible:false,launcherOpen:false,search:''}};
+}
+async function broadcastState(tabs) {
+  await Promise.all(tabs.filter(t=>t.active).map(async tab=>{
+    try {await chrome.tabs.sendMessage(tab.id,{type:'dock-state',state:stateForWindow(tab.windowId)});}catch{}
+  }));
+}
+function refreshDockState(uiPatch) {
+  const task=stateQueue.catch(()=>{}).then(async()=>{
+    const previous=dockState || (await chrome.storage.session.get('dockState')).dockState || {revision:0,uiByWindow:{}};
+    const tabs=uiPatch&&dockState ? dockTabs : await chrome.tabs.query({}), config=uiPatch&&dockState ? dockState.settings : await settings();
+    dockTabs=tabs;
+    const remembered=await chrome.storage.session.get(null);
+    const appFor=tab=>apps.find(a=>appTabMatches(a,tab)) || (isGoogleSignIn(tab)?apps.find(a=>remembered['appTab:'+a.id]===tab.id):undefined);
+    const ids=apps.filter(a=>tabs.some(t=>appFor(t)?.id===a.id)).map(a=>a.id);
+    const activeByWindow={};
+    tabs.filter(t=>t.active).forEach(t=>activeByWindow[t.windowId]=appFor(t)?.id || null);
+    const uiByWindow={...previous.uiByWindow};
+    if(uiPatch){
+      const old=uiByWindow[uiPatch.windowId] || {visible:false,launcherOpen:false,search:''};
+      const next={...old};
+      if(typeof uiPatch.patch.visible==='boolean')next.visible=uiPatch.patch.visible;
+      if(typeof uiPatch.patch.launcherOpen==='boolean')next.launcherOpen=uiPatch.patch.launcherOpen;
+      if(typeof uiPatch.patch.search==='string')next.search=uiPatch.patch.search.slice(0,200);
+      uiByWindow[uiPatch.windowId]=next;
+    }
+    const liveWindows=new Set(tabs.map(t=>String(t.windowId)));
+    for(const id of Object.keys(uiByWindow))if(!liveWindows.has(id))delete uiByWindow[id];
+    dockState={revision:previous.revision+1,settings:config,ids,activeByWindow,uiByWindow};
+    await chrome.storage.session.set({dockState});
+    await broadcastState(tabs);return dockState;
+  });
+  stateQueue=task;return task;
+}
+async function ensureDockState(){
+  if(!dockState){initializingState ??= refreshDockState().finally(()=>initializingState=undefined);await initializingState;}
+  else await stateQueue.catch(()=>{});
+}
+function scheduleStateRefresh(){
+  clearTimeout(stateTimer);stateTimer=setTimeout(()=>{stateTimer=undefined;refreshDockState().catch(()=>{});},40);
+}
 async function handle(message,sender) {
   if (message.type === 'launch') return launch(message,sender);
+  if (message.type === 'close') return closeApp(message,sender);
   if (message.type === 'pin' || message.type === 'settings-patch' || message.type === 'reorder') return changeSettings(message);
-  if (message.type === 'running') {
-    const tabs = await chrome.tabs.query({});
+  if(message.type==='state-get' || message.type==='running'){
+    await ensureDockState();
     const windowId=sender.tab?.windowId ?? (await chrome.windows.getLastFocused()).id;
-    const active=tabs.find(t=>t.windowId===windowId && t.active);
-    return {ids:apps.filter(a=>tabs.some(t=>appTabMatches(a,t))).map(a=>a.id),activeId:active ? apps.find(a=>appTabMatches(a,active))?.id || null : null};
+    return stateForWindow(windowId);
+  }
+  if(message.type==='ui-patch'){
+    const windowId=sender.tab?.windowId ?? (await chrome.windows.getLastFocused()).id;
+    await refreshDockState({windowId,patch:message.patch || {}});return {ok:true};
   }
   if (message.type === 'options') { await chrome.runtime.openOptionsPage(); return {ok:true}; }
   throw new Error('Unknown request');
@@ -155,30 +222,23 @@ chrome.commands.onCommand.addListener(async name => {
   if (tab?.id) { try { await chrome.tabs.sendMessage(tab.id,{type:'toggle-dock'}); } catch { await chrome.action.openPopup(); } }
 });
 
-// Push focus/navigation changes to the active page; polling remains a fallback for running dots.
-async function notifyActive(windowId) {
-  const [tab]=await chrome.tabs.query({active:true,windowId});
-  if(tab?.id){try{await chrome.tabs.sendMessage(tab.id,{type:'dock-state-changed'});}catch{}}
-}
+// Browser events update the singleton and push it to current page views. No page polling.
 const syncTimers=new Map();
 function scheduleOrderSync(windowId) {
-  if(groupQueues.has(windowId))return; // Ignore moves performed by our own serialized sorter.
+  if(groupQueues.has(windowId))return;
   clearTimeout(syncTimers.get(windowId));
   syncTimers.set(windowId,setTimeout(()=>{
     syncTimers.delete(windowId);syncWindowGroups(windowId).catch(()=>{});
   },150));
 }
-chrome.tabs.onActivated.addListener(info=>{notifyActive(info.windowId).catch(()=>{});});
+chrome.tabs.onActivated.addListener(()=>scheduleStateRefresh());
+chrome.tabs.onCreated.addListener(()=>scheduleStateRefresh());
 chrome.tabs.onUpdated.addListener((tabId,changes,tab)=>{
-  if(changes.url || changes.status==='complete' || changes.groupId!==undefined){
-    if(tab.active)notifyActive(tab.windowId).catch(()=>{});
-    scheduleOrderSync(tab.windowId);
-  }
+  if(changes.url || changes.status==='complete' || changes.groupId!==undefined){scheduleStateRefresh();scheduleOrderSync(tab.windowId);}
 });
 chrome.tabs.onMoved.addListener((tabId,info)=>scheduleOrderSync(info.windowId));
-chrome.tabs.onAttached.addListener((tabId,info)=>scheduleOrderSync(info.newWindowId));
-chrome.tabs.onRemoved.addListener((tabId,info)=>{
-  if(!info.isWindowClosing){notifyActive(info.windowId).catch(()=>{});scheduleOrderSync(info.windowId);}
-});
-chrome.runtime.onStartup.addListener(()=>syncAllGroups().catch(()=>{}));
-chrome.runtime.onInstalled.addListener(()=>syncAllGroups().catch(()=>{}));
+chrome.tabs.onAttached.addListener((tabId,info)=>{scheduleStateRefresh();scheduleOrderSync(info.newWindowId);});
+chrome.tabs.onRemoved.addListener((tabId,info)=>{scheduleStateRefresh();if(!info.isWindowClosing)scheduleOrderSync(info.windowId);});
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes.settings)scheduleStateRefresh();});
+chrome.runtime.onStartup.addListener(()=>{syncAllGroups().catch(()=>{});scheduleStateRefresh();});
+chrome.runtime.onInstalled.addListener(()=>{syncAllGroups().catch(()=>{});scheduleStateRefresh();});

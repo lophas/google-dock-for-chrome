@@ -1,14 +1,16 @@
 const grid=document.getElementById('apps'), search=document.getElementById('search'), status=document.getElementById('status');
 const menu=document.createElement('div');menu.className='context-menu';menu.hidden=true;menu.setAttribute('role','menu');document.body.append(menu);
-let config=GDock.normalize(), origin;
+let config=GDock.normalize(), running=[], origin;
 async function request(message){const r=await chrome.runtime.sendMessage(message);if(r?.error)throw new Error(r.error);return r;}
 function closeMenu(){menu.hidden=true;if(origin?.isConnected)origin.focus();}
-function showMenu(app,b,e){
-  e.preventDefault();origin=b;menu.replaceChildren();
+async function showMenu(app,b,e){
+  e.preventDefault();
+  try{applyState(await request({type:'state-get'}));}catch(error){status.textContent=error.message;return;}origin=b;menu.replaceChildren();
   const keep=config.dockApps.includes(app.id), pin=document.createElement('button');
   pin.setAttribute('role','menuitemcheckbox');pin.setAttribute('aria-checked',String(keep));pin.textContent=(keep?'✓  ':'')+'Keep in Dock';
   pin.onclick=async()=>{closeMenu();try{const r=await request({type:'pin',appId:app.id,keep:!keep});config=GDock.normalize(r.settings);}catch(e){status.textContent=e.message;}};
-  const open=document.createElement('button');open.textContent='Open New Tab';open.setAttribute('role','menuitem');open.onclick=()=>launch(app,{newTab:true});
+  const isOpen=running.includes(app.id);
+  const open=document.createElement('button');open.textContent=isOpen?'Close':'Open';open.setAttribute('role','menuitem');open.onclick=async()=>{if(!isOpen)return launch(app);closeMenu();try{await request({type:'close',appId:app.id});applyState(await request({type:'state-get'}));}catch(e){status.textContent=e.message;}};
   menu.append(pin,open);menu.hidden=false;
   menu.style.left=Math.max(8,Math.min(e.clientX,innerWidth-menu.offsetWidth-8))+'px';
   menu.style.top=Math.max(8,Math.min(e.clientY-menu.offsetHeight,innerHeight-menu.offsetHeight-8))+'px';
@@ -33,6 +35,7 @@ search.addEventListener('input',()=>{closeMenu();render();});
 document.addEventListener('pointerdown',e=>{if(!menu.hidden&&!e.composedPath().includes(menu))menu.hidden=true;});
 document.addEventListener('keydown',e=>{if(!menu.hidden&&e.key==='Escape'){e.preventDefault();closeMenu();}else if(!menu.hidden&&['ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();const items=[...menu.querySelectorAll('button')],i=items.indexOf(document.activeElement);items[(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length].focus();}});
 document.getElementById('settings').onclick=()=>chrome.runtime.openOptionsPage();
-chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes.settings)config=GDock.normalize(changes.settings.newValue);});
-chrome.storage.local.get('settings').then(r=>config=GDock.normalize(r.settings)).catch(e=>status.textContent=e.message);
+function applyState(state){config=GDock.normalize(state.settings);running=state.ids || [];}
+chrome.runtime.onMessage.addListener(message=>{if(message.type==='dock-state')applyState(message.state);});
+request({type:'state-get'}).then(applyState).catch(e=>status.textContent=e.message);
 render();search.focus();

@@ -9,7 +9,7 @@ A macOS-inspired, auto-hiding dock for Google apps, built as a dependency-free C
 3. Click **Load unpacked** and select the extracted folder containing `manifest.json`.
 4. Refresh an existing website tab. Move the mouse to the bottom **center** of the page and pause briefly to reveal the dock.
 
-## Version 0.4.0
+## Version 0.5.0
 
 - Floating glass dock with hover magnification and a delayed hide.
 - Drag pinned icons directly in the dock to reorder them. A blue insertion marker shows the destination; order is saved across tabs.
@@ -19,11 +19,12 @@ A macOS-inspired, auto-hiding dock for Google apps, built as a dependency-free C
 - Shortcuts for Google Payments, Password Manager, Google Account, Contacts and Google One; they support pinning, tab reuse and grouping just like the apps.
 - A normal click reuses the app’s remembered tab, then falls back to an existing matching app tab (current window preferred), and opens a tab only when needed. App tab IDs are kept in session storage across service-worker restarts. Rapid same-app clicks are serialized to prevent duplicates. If the remembered tab closes or navigates away from the app, the next click finds or creates a replacement. The tab is not Chrome-pinned, so it can stay in the Google Dock tab group.
 - Ctrl/Cmd/Shift-click forces a new tab. Middle-click opens a background tab.
-- Right-click any dock or launcher icon for **Keep in Dock** and **Open New Tab**. Unpinned running apps appear to the right of a separator and disappear after their last tab closes (indicators refresh every four seconds while the dock is visible).
+- Right-click any dock or launcher icon for **Keep in Dock** and **Close** when the app has a running tab, otherwise **Open**. Close removes one app tab: the active matching tab in this window, then the remembered app tab, then another matching tab. It does not unpin the app or close all duplicate tabs. Unpinned running apps appear to the right of a separator and disappear after their last tab closes (browser tab events push updates from the shared state).
 - Apps opened or activated through the dock or toolbar launcher join a blue **Google Dock** native Chrome tab group in their own window. Concurrent launches reuse the same group. Chrome-pinned tabs remain pinned and display a grouping warning.
 - The active app in the dock’s browser window has a blue background and a wider blue indicator; ordinary running apps retain a dot. Tab activation and navigation push an update to the active page. Non-Google active tabs clear the active-app marker.
 - Native Google Dock group tabs follow pinned-icon order, then temporary-app catalogue order. Dock reordering/pinning synchronizes every window; app launches, navigation and manual group-tab moves also trigger sorting. Multiple tabs of the same app retain their relative order, while unrelated tabs manually added to the group stay at the end. The sorter preserves the group’s position among other tabs.
-- Running dots refresh when revealed and every four seconds while visible.
+- One service-worker dock model owns settings, running apps, active apps by window and UI state. All page views consume this snapshot. Browser events refresh it and push changes; page scripts do not poll or scan tabs. Window-level dock visibility, launcher openness and search text survive tab switches. The model is stored in session storage across service-worker suspension; app settings remain in local storage across browser restarts. A separate DOM view is still required in each webpage, because an extension cannot share one DOM node across page documents.
+- Generated extension thumbnail and packaged 16/32/48/128 px icons are connected to the manifest and toolbar action.
 - Searchable all-app launcher, also available from the toolbar on restricted pages.
 - Settings: pinned apps, drag-and-drop and keyboard-button reordering, three icon sizes, light/dark/system theme, activation-zone height, autohide, tab reuse and enable switch.
 - **Alt+Shift+G** toggles the dock; customize via `chrome://extensions/shortcuts`. **Escape** closes it. The dock stays hidden during webpage fullscreen.
@@ -37,7 +38,7 @@ App URLs currently use the default Google account (`u/0` where supported). Tab r
 
 ## Permissions and privacy
 
-The `storage`, `tabGroups` and `tabs` API permissions are requested. `tabGroups` names and manages the native Google Dock group. `tabs` explicitly enables reading app tab URLs and pending URLs for reliable reuse and running indicators, independently of content-script injection permissions. Content scripts run on HTTP/HTTPS websites to provide the dock. No cookies, mailbox or calendar-content APIs are used. Settings are stored in `chrome.storage.local`, without cloud sync. App-to-tab IDs live in `chrome.storage.session` and clear when the browser session ends. URLs are used in memory for app matching and are not persisted or transmitted. Google sites receive normal navigation requests when opened.
+The `storage`, `tabGroups` and `tabs` API permissions are requested. `tabGroups` names and manages the native Google Dock group. `tabs` explicitly enables reading app tab URLs and pending URLs for reliable reuse and running indicators, independently of content-script injection permissions. Content scripts run on HTTP/HTTPS websites to provide the dock. No cookies, mailbox or calendar-content APIs are used. Settings are stored in `chrome.storage.local`, without cloud sync. App-to-tab IDs, the shared dock model and per-window presentation state live in `chrome.storage.session` and clear when the browser session ends. URLs are used in memory for app matching and are not persisted or transmitted. Google sites receive normal navigation requests when opened.
 
 
 ## Development
@@ -61,3 +62,7 @@ Replace the unpacked extension folder, reload it in `chrome://extensions`, and r
 ## Restricted browser pages
 
 A webpage overlay cannot be placed on `chrome://settings`, `chrome://extensions` or Chrome-generated network error pages. These surfaces prohibit extension content scripts, regardless of the autohide setting. Use the toolbar launcher or **Alt+Shift+G** fallback there. Ordinary HTTP/HTTPS pages that display a website-generated error remain normal webpages and use the configured dock behavior.
+
+## Icon asset
+
+The thumbnail was generated with the built-in ImageGen tool, then resized for Chrome packaging. The original prompt is in [icons/prompt.txt](icons/prompt.txt); the full thumbnail is [icons/thumbnail.png](icons/thumbnail.png).

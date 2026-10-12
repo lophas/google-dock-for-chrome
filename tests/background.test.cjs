@@ -15,15 +15,16 @@ function setup(tabs=[],settings={}) {
     windowTabs.forEach((t,i)=>t.index=i);return tab;
   }
   const chrome={
-    storage:{session:{get:async key=>key===null?session:{[key]:session[key]},set:async r=>Object.assign(session,r)},local:{get:async()=>({settings:stored}),set:async r=>{stored=r.settings;}}},
+    storage:{onChanged:event('storageChanged'),session:{get:async key=>key===null?session:{[key]:session[key]},set:async r=>Object.assign(session,r)},local:{get:async()=>({settings:stored}),set:async r=>{stored=r.settings;}}},
     runtime:{onMessage:{addListener:fn=>listener=fn},onStartup:event('startup'),onInstalled:event('installed'),openOptionsPage:async()=>{}},
     commands:{onCommand:{addListener(){}}},
     tabs:{
-      onActivated:event('activated'),onUpdated:event('updated'),onMoved:event('moved'),onAttached:event('attached'),onRemoved:event('removed'),
+      onCreated:event('created'),onActivated:event('activated'),onUpdated:event('updated'),onMoved:event('moved'),onAttached:event('attached'),onRemoved:event('removed'),
       query:async(q={})=>tabs.filter(t=>(q.groupId===undefined||t.groupId===q.groupId)&&(q.windowId===undefined||t.windowId===q.windowId)&&(q.active===undefined||t.active===q.active)).sort((a,b)=>a.index-b.index),
       sendMessage:async()=>{},
       update:async(id,opts)=>{calls.push(['activate',id]);if(id===999)throw Error('Closed');const tab=tabs.find(t=>t.id===id);if(opts.active)tabs.filter(t=>t.windowId===tab.windowId).forEach(t=>t.active=t.id===id);return tab;},
       create:async opts=>{calls.push(['create',opts]);const tab={id:nextTab++,index:tabs.filter(t=>t.windowId===opts.windowId).length,...opts};tabs.push(tab);return tab;},
+      remove:async id=>{const i=tabs.findIndex(t=>t.id===id);if(i>=0)tabs.splice(i,1);},
       move:async(id,opts)=>{moveCalls.push([id,opts.index]);return move(id,opts.index);},
       group:async opts=>{
         groupCalls.push(opts);let id=opts.groupId;
@@ -144,7 +145,7 @@ test('manifest declares tab URL access explicitly',()=>{
 test('active icon reflects the active tab in the requesting window, and clears on other sites',async()=>{
   const s=setup([{id:1,windowId:1,active:true,url:'https://mail.google.com/mail/u/0/'},{id:2,windowId:2,active:true,url:'https://gemini.google.com/app'}]);
   assert.equal((await s.send({type:'running'},1)).activeId,'gmail');assert.equal((await s.send({type:'running'},2)).activeId,'gemini');
-  s.tabs[0].url='https://example.org/';assert.equal((await s.send({type:'running'},1)).activeId,null);
+  s.tabs[0].url='https://example.org/';await vm.runInContext('refreshDockState()',s.ctx);assert.equal((await s.send({type:'running'},1)).activeId,null);
 });
 test('launch group order follows pinned icons and then temporary catalogue order',async()=>{
   const s=setup([],{dockApps:['gemini','gmail','drive']});
@@ -165,4 +166,29 @@ test('manual group-tab rearrangement is corrected without a move loop',async()=>
   await s.chrome.tabs.move(101,{index:0});s.listeners.moved(101,{windowId:1});
   await new Promise(resolve=>setTimeout(resolve,220));
   assert.deepEqual(s.tabs.sort((a,b)=>a.index-b.index).map(t=>t.id),[100,101]);
+});
+test('close removes one app tab, leaves pinned icons and unrelated tabs intact',async()=>{
+  const s=setup([{id:1,windowId:1,active:true,url:'https://mail.google.com/mail/u/0/'},{id:2,windowId:1,url:'https://mail.google.com/mail/u/1/'},{id:3,windowId:1,url:'https://example.org/'}],{dockApps:['gmail']});
+  await s.send({type:'close',appId:'gmail'});assert.deepEqual(s.tabs.map(t=>t.id),[2,3]);assert.deepEqual(s.stored().dockApps,['gmail']);
+  await s.send({type:'close',appId:'gmail'});assert.deepEqual(s.tabs.map(t=>t.id),[3]);
+  await s.send({type:'close',appId:'gmail'});assert.deepEqual(s.tabs.map(t=>t.id),[3]);
+});
+test('all page views read the same cached singleton without querying tabs per view',async()=>{
+  const s=setup([{id:1,windowId:1,active:true,url:'https://mail.google.com/mail/u/0/'}]);let queries=0;
+  const query=s.chrome.tabs.query;s.chrome.tabs.query=async opts=>{queries++;return query(opts);};
+  const a=await s.send({type:'state-get'});const afterInit=queries;
+  const b=await s.send({type:'state-get'});assert.equal(queries,afterInit);assert.equal(a.revision,b.revision);
+  await s.send({type:'ui-patch',patch:{visible:true,launcherOpen:true,search:'drive'}});
+  const c=await s.send({type:'state-get'});assert.equal(queries,afterInit);assert.equal(c.ui.visible,true);assert.equal(c.ui.search,'drive');
+  assert.equal(s.session.dockState.uiByWindow[1].launcherOpen,true);
+});
+test('singleton recovers per-window UI when the service worker restarts',async()=>{
+  const s=setup([{id:1,windowId:1,active:true,url:'https://mail.google.com/mail/u/0/'}]);
+  await s.send({type:'ui-patch',patch:{visible:true,search:'gemini'}});
+  vm.runInContext('dockState=undefined;dockTabs=[];',s.ctx);
+  const state=await s.send({type:'state-get'});assert.equal(state.ui.visible,true);assert.equal(state.ui.search,'gemini');assert.equal(state.activeId,'gmail');
+});
+test('app close refreshes the central running state immediately',async()=>{
+  const s=setup([{id:1,windowId:1,active:true,url:'https://gemini.google.com/app'}]);assert.ok((await s.send({type:'state-get'})).ids.includes('gemini'));
+  await s.send({type:'close',appId:'gemini'});assert.equal((await s.send({type:'state-get'})).ids.includes('gemini'),false);
 });
