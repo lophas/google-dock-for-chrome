@@ -2,12 +2,14 @@ let config=GDock.normalize(), order=[], dragged;
 const status=document.getElementById('status');
 const fields=['enabled','autoHide','reuseTabs','size','triggerHeight','theme'];
 function rebuildOrder(){order=[...config.dockApps,...GDock.apps.map(a=>a.id).filter(id=>!config.dockApps.includes(id))];}
-async function save(patch){
+let pendingSave=Promise.resolve();
+function save(patch){const copy=JSON.parse(JSON.stringify(patch));pendingSave=pendingSave.then(()=>performSave(copy));return pendingSave;}
+async function performSave(patch){
   try {
     const response=await chrome.runtime.sendMessage({type:'settings-patch',patch});
     if(response?.error) throw new Error(response.error);
-    config=GDock.normalize(response.settings);status.textContent='Saved';
-  } catch(e) {status.textContent='Save failed: '+e.message;}
+    config=GDock.normalize(response.settings);status.textContent='Saved';return true;
+  } catch(e) {status.textContent='Save failed: '+e.message;return false;}
 }
 function syncPins(){config.dockApps=order.filter(id=>config.dockApps.includes(id));}
 function move(id,to){
@@ -53,3 +55,34 @@ function controls(){
     if(area==='local'&&changes.settings){config=GDock.normalize(changes.settings.newValue);rebuildOrder();controls();render();}
   });
 })().catch(e=>status.textContent=e.message);
+
+const backupStatus=document.getElementById('backup-status');
+const backupButton=document.getElementById('backup'), restoreButton=document.getElementById('restore'), backupFile=document.getElementById('backup-file');
+function backupBusy(busy){backupButton.disabled=busy;restoreButton.disabled=busy;}
+backupButton.addEventListener('click',async()=>{
+  backupBusy(true);
+  try {
+    await pendingSave;
+    const state=await chrome.runtime.sendMessage({type:'state-get'});
+    if(state?.error)throw new Error(state.error);
+    const text=GDockBackup.serialize(state.settings.dockApps);
+    const url=URL.createObjectURL(new Blob([text],{type:'application/json'}));
+    const link=document.createElement('a');link.href=url;link.download='google-dock-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    backupStatus.textContent='Backup downloaded.';
+  } catch(e){backupStatus.textContent='Backup failed: '+e.message;}
+  finally{backupBusy(false);}
+});
+restoreButton.addEventListener('click',()=>{backupFile.value='';backupFile.click();});
+backupFile.addEventListener('change',async()=>{
+  const file=backupFile.files[0];if(!file)return;
+  backupBusy(true);
+  try {
+    if(file.size>65536)throw new Error('Backup files must be smaller than 64 KB.');
+    const dockApps=GDockBackup.parse(await file.text());
+    if(!await save({dockApps}))throw new Error('The backup could not be saved.');
+    rebuildOrder();render();
+    backupStatus.textContent='Restored '+dockApps.length+' pinned app'+(dockApps.length===1?'':'s')+'.';
+  } catch(e){backupStatus.textContent='Restore failed: '+e.message;}
+  finally{backupBusy(false);backupFile.value='';}
+});

@@ -41,6 +41,8 @@ Open **Settings** from the app menu or toolbar launcher to choose favorites, ico
 
 **Using the macOS Dock?** Increase **Activation zone height** to reveal Google Dock before reaching the screen’s bottom edge. The default is **24 px**.
 
+Use **Backup & restore** in Settings to download your pinned apps and their order as a JSON file, or restore a saved list. Restoring replaces the favorites without changing appearance or behavior settings.
+
 Change the keyboard shortcut at `chrome://extensions/shortcuts`.
 
 ## Good to know
