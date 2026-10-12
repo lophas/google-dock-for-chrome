@@ -41,17 +41,35 @@ Open **Settings** from the app menu or toolbar launcher to choose favorites, ico
 
 **Using the macOS Dock?** Increase **Activation zone height** to reveal Google Dock before reaching the screen’s bottom edge. The default is **24 px**.
 
-Use **Backup & restore** in Settings to download your pinned apps and their order as a JSON file, or restore a saved list. Restoring replaces the favorites without changing appearance or behavior settings.
-
-The dock uses a subtle **4 px blur**, including at 100% transparency.
+**Dock background transparency** controls the background tint: **0%** is opaque and **100%** is transparent. A subtle **4 px blur** remains at every setting; app icons stay fully visible.
 
 Change the keyboard shortcut at `chrome://extensions/shortcuts`.
+
+## Use a different Google account
+
+You can remember a separate signed-in account for each app, for example a different account for Photos.
+
+1. Open the app and select the account you want to use.
+2. Return to Settings → **Google accounts per app** and choose the app.
+3. Click **Remember last-used app account**.
+
+The dock opens and reuses tabs for that account. If its tab is in another window, the dock brings it into your current window. **Use automatic account** clears the saved choice.
+
+Both accounts must be signed in within the **same Chrome profile**. If your sign-in order changes, remember the account again. An app can be remembered only when its URL identifies the account.
+
+## Backup & restore
+
+In Settings → **Backup & restore**:
+
+- **Download backup** saves your pinned apps and their order as a JSON file.
+- **Restore from file** replaces the pinned list with a saved backup.
+
+Your theme, transparency and app-account choices are kept as they are; they are not included in the pinned-app backup.
 
 ## Good to know
 
 - On Chrome settings, browser error pages, the Chrome Web Store and the built-in PDF viewer, use the **toolbar launcher** instead of the webpage dock.
 - The dock stays hidden during webpage fullscreen.
-- To use another Google account for Photos or another app, select the account inside that app first. In Settings → **Google accounts per app**, choose the app and click **Remember last-used app account**. The account must already be signed in within this Chrome profile. If sign-in order changes, remember the account again. A remembered-account app tab in another window is brought into the window where you use the dock. Separate Chrome profiles cannot share app tabs or sign-in sessions. Apps whose URL does not identify the account cannot be saved this way.
 - To update, replace the extension files, click **Reload** at `chrome://extensions`, then refresh website tabs. Your settings are preserved.
 
 Settings stay on your device. No analytics; no access to mailbox, calendar or password contents.
