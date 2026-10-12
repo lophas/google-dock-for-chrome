@@ -27,6 +27,7 @@ function changeSettings(message) {
     }
     const next = normalize(config);
     await chrome.storage.local.set({settings:next});
+    await syncAllGroups().catch(()=>{});
     return {ok:true, settings:next};
   });
   settingsQueue = task;
@@ -36,8 +37,44 @@ function changeSettings(message) {
 // A window cannot share a native Chrome tab group with another window.
 // Serialize grouping within each window to avoid duplicate groups on rapid launches.
 const groupQueues = new Map();
+function inGroupQueue(windowId,work) {
+  const task=(groupQueues.get(windowId)||Promise.resolve()).catch(()=>{}).then(work);
+  groupQueues.set(windowId,task);
+  task.finally(()=>{if(groupQueues.get(windowId)===task)groupQueues.delete(windowId);}).catch(()=>{});
+  return task;
+}
+async function sortGroup(groupId) {
+  const config=await settings();
+  const remembered=await chrome.storage.session.get(null);
+  const order=[...config.dockApps,...apps.map(a=>a.id).filter(id=>!config.dockApps.includes(id))];
+  const tabs=(await chrome.tabs.query({groupId})).sort((a,b)=>a.index-b.index);
+  if(tabs.length<2)return;
+  const appId=tab=>apps.find(a=>appTabMatches(a,tab))?.id || (isGoogleSignIn(tab)?apps.find(a=>remembered['appTab:'+a.id]===tab.id)?.id:undefined);
+  const rank=tab=>{const id=appId(tab);return id?order.indexOf(id):order.length;};
+  // Multiple tabs of one app retain their relative order. Unrelated group members stay at the end.
+  const desired=[...tabs].sort((a,b)=>rank(a)-rank(b));
+  const start=tabs[0].index;
+  for(let i=0;i<desired.length;i++) {
+    const current=tabs.findIndex(t=>t.id===desired[i].id);
+    if(current===i)continue;
+    await chrome.tabs.move(desired[i].id,{index:start+i});
+    tabs.splice(i,0,tabs.splice(current,1)[0]);
+  }
+}
+async function syncWindowGroups(windowId) {
+  return inGroupQueue(windowId,async()=>{
+    const groups=await chrome.tabGroups.query({windowId,title:'Google Dock'});
+    for(const group of groups)await sortGroup(group.id);
+  });
+}
+async function syncAllGroups() {
+  const groups=await chrome.tabGroups.query({title:'Google Dock'});
+  const results=await Promise.allSettled([...new Set(groups.map(g=>g.windowId))].map(syncWindowGroups));
+  // A group/window may disappear while syncing; never undo a saved dock setting.
+  if(results.some(r=>r.status==='rejected'))console.warn('Google Dock: a group changed during order sync');
+}
 function groupAppTab(tab, reveal) {
-  const task = (groupQueues.get(tab.windowId) || Promise.resolve()).catch(() => {}).then(async () => {
+  return inGroupQueue(tab.windowId,async()=>{
     if (tab.pinned) throw new Error('Chrome-pinned tabs cannot join a group. Unpin the tab to group it.');
     const groups = await chrome.tabGroups.query({windowId:tab.windowId,title:'Google Dock'});
     let groupId;
@@ -50,10 +87,8 @@ function groupAppTab(tab, reveal) {
       await chrome.tabGroups.update(groupId,{title:'Google Dock',color:'blue'});
     }
     if (reveal) await chrome.tabGroups.update(groupId,{collapsed:false});
+    await sortGroup(groupId);
   });
-  groupQueues.set(tab.windowId,task);
-  task.finally(() => { if (groupQueues.get(tab.windowId) === task) groupQueues.delete(tab.windowId); }).catch(() => {});
-  return task;
 }
 async function groupResult(tab, reveal) {
   try { await groupAppTab(tab,reveal); return {ok:true}; }
@@ -103,7 +138,9 @@ async function handle(message,sender) {
   if (message.type === 'pin' || message.type === 'settings-patch' || message.type === 'reorder') return changeSettings(message);
   if (message.type === 'running') {
     const tabs = await chrome.tabs.query({});
-    return {ids:apps.filter(a=>tabs.some(t=>appTabMatches(a,t))).map(a=>a.id)};
+    const windowId=sender.tab?.windowId ?? (await chrome.windows.getLastFocused()).id;
+    const active=tabs.find(t=>t.windowId===windowId && t.active);
+    return {ids:apps.filter(a=>tabs.some(t=>appTabMatches(a,t))).map(a=>a.id),activeId:active ? apps.find(a=>appTabMatches(a,active))?.id || null : null};
   }
   if (message.type === 'options') { await chrome.runtime.openOptionsPage(); return {ok:true}; }
   throw new Error('Unknown request');
@@ -117,3 +154,31 @@ chrome.commands.onCommand.addListener(async name => {
   const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
   if (tab?.id) { try { await chrome.tabs.sendMessage(tab.id,{type:'toggle-dock'}); } catch { await chrome.action.openPopup(); } }
 });
+
+// Push focus/navigation changes to the active page; polling remains a fallback for running dots.
+async function notifyActive(windowId) {
+  const [tab]=await chrome.tabs.query({active:true,windowId});
+  if(tab?.id){try{await chrome.tabs.sendMessage(tab.id,{type:'dock-state-changed'});}catch{}}
+}
+const syncTimers=new Map();
+function scheduleOrderSync(windowId) {
+  if(groupQueues.has(windowId))return; // Ignore moves performed by our own serialized sorter.
+  clearTimeout(syncTimers.get(windowId));
+  syncTimers.set(windowId,setTimeout(()=>{
+    syncTimers.delete(windowId);syncWindowGroups(windowId).catch(()=>{});
+  },150));
+}
+chrome.tabs.onActivated.addListener(info=>{notifyActive(info.windowId).catch(()=>{});});
+chrome.tabs.onUpdated.addListener((tabId,changes,tab)=>{
+  if(changes.url || changes.status==='complete' || changes.groupId!==undefined){
+    if(tab.active)notifyActive(tab.windowId).catch(()=>{});
+    scheduleOrderSync(tab.windowId);
+  }
+});
+chrome.tabs.onMoved.addListener((tabId,info)=>scheduleOrderSync(info.windowId));
+chrome.tabs.onAttached.addListener((tabId,info)=>scheduleOrderSync(info.newWindowId));
+chrome.tabs.onRemoved.addListener((tabId,info)=>{
+  if(!info.isWindowClosing){notifyActive(info.windowId).catch(()=>{});scheduleOrderSync(info.windowId);}
+});
+chrome.runtime.onStartup.addListener(()=>syncAllGroups().catch(()=>{}));
+chrome.runtime.onInstalled.addListener(()=>syncAllGroups().catch(()=>{}));

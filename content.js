@@ -10,7 +10,7 @@
   const dock=shell.querySelector('.dock'), launcher=shell.querySelector('.launcher'), search=shell.querySelector('.search');
   const menu=shell.querySelector('.context-menu');
   let menuOrigin, draggedApp, dropBefore, suppressClick=false;
-  let config=GDock.normalize(), visible=false, dwell, hideTimer, lastX=-1,lastY=-1, running=[], generation=0;
+  let config=GDock.normalize(), visible=false, dwell, hideTimer, lastX=-1,lastY=-1, running=[], activeId=null, generation=0;
   async function request(message) { const r=await chrome.runtime.sendMessage(message); if(r?.error) throw new Error(r.error); if(r?.warning) error({message:r.warning}); return r; }
   function error(e) { const status=shell.querySelector('.status'); status.textContent=e.message || 'Could not open app'; status.hidden=false; setTimeout(()=>status.hidden=true,3500); }
   function setVisible(value) {
@@ -117,12 +117,19 @@
     renderDock(); renderGrid();
     setVisible(!config.autoHide || (!initial && visible));
   }
-  function markRunning(){shell.querySelectorAll('.app').forEach(b=>b.dataset.running=String(running.includes(b.dataset.appId)));}
+  function markRunning(){
+    shell.querySelectorAll('.app').forEach(b=>{
+      b.dataset.running=String(running.includes(b.dataset.appId));
+      const active=b.dataset.appId===activeId;b.dataset.active=String(active);
+      if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
+    });
+  }
   async function refreshRunning(){
     const g=++generation;
     try {
       const response=await request({type:'running'});
       if(g===generation && Array.isArray(response.ids)) {
+        activeId=response.activeId || null;
         const ids=response.ids.filter(id=>GDock.apps.some(a=>a.id===id));
         if(ids.join(',')!==running.join(',')) { running=ids; renderDock(); }
         else markRunning();
@@ -154,7 +161,7 @@
   window.addEventListener('focus',()=>{if(!config.autoHide)setVisible(true);});
   document.addEventListener('fullscreenchange',()=>setVisible(!config.autoHide));
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&config.autoHide)setVisible(false);else if(visible)refreshRunning();});
-  chrome.runtime.onMessage.addListener(m=>{if(m.type==='toggle-dock')setVisible(!visible);});
+  chrome.runtime.onMessage.addListener(m=>{if(m.type==='toggle-dock')setVisible(!visible);else if(m.type==='dock-state-changed')refreshRunning();});
   chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes.settings)apply(changes.settings.newValue);});
   apply((await chrome.storage.local.get('settings')).settings,true);
   // Refresh indicators only while the dock is open. A backgrounded tab does no polling.

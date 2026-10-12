@@ -16,3 +16,5 @@
 
 .context-menu{position:fixed;width:200px;padding:7px;border-radius:14px;background:var(--panel);color:var(--text);backdrop-filter:blur(24px);box-shadow:0 8px 32px #0004;border:1px solid var(--border);pointer-events:auto;z-index:2}.menu-title{padding:7px 10px;font-size:12px;opacity:.65}.context-menu button{display:block;width:100%;text-align:left;border:0;border-radius:8px;background:none;color:inherit;padding:10px}.context-menu button:hover{background:var(--hover)}
 .app[draggable=true]{cursor:grab}.app.dragging{opacity:.35;cursor:grabbing}.app.drop-before:before,.app.drop-after:before{content:'';position:absolute;top:7px;bottom:9px;width:3px;border-radius:3px;background:#4285f4}.app.drop-before:before{left:0}.app.drop-after:before{right:0}
+
+.app[data-active=true]{background:rgba(66,133,244,.17);box-shadow:inset 0 0 0 1px rgba(66,133,244,.45)}.app[data-active=true]:after{content:'';position:absolute;bottom:0;width:14px;height:4px;border-radius:4px;background:#4285f4}

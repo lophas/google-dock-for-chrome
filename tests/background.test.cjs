@@ -4,25 +4,42 @@ const vm=require('node:vm');
 const fs=require('node:fs');
 const path=require('node:path');
 function setup(tabs=[],settings={}) {
-  const calls=[], groupCalls=[], groups=[], session={}; let listener, nextGroup=1, nextTab=100, stored=settings;
+  const calls=[], groupCalls=[], moveCalls=[], groups=[], session={}, listeners={};
+  let listener, nextGroup=1, nextTab=100, stored=settings;
+  const event=name=>({addListener:fn=>listeners[name]=fn});
+  for(let i=0;i<tabs.length;i++){tabs[i].windowId??=1;tabs[i].index??=i;}
+  function move(id,index){
+    const tab=tabs.find(t=>t.id===id);
+    const windowTabs=tabs.filter(t=>t.windowId===tab.windowId).sort((a,b)=>a.index-b.index);
+    const current=windowTabs.indexOf(tab);windowTabs.splice(current,1);windowTabs.splice(index,0,tab);
+    windowTabs.forEach((t,i)=>t.index=i);return tab;
+  }
   const chrome={
-    storage:{session:{get:async key=>({[key]:session[key]}),set:async r=>Object.assign(session,r)},local:{get:async()=>({settings:stored}),set:async r=>{stored=r.settings;}}},
-    runtime:{onMessage:{addListener:fn=>listener=fn},openOptionsPage:async()=>{}},
+    storage:{session:{get:async key=>key===null?session:{[key]:session[key]},set:async r=>Object.assign(session,r)},local:{get:async()=>({settings:stored}),set:async r=>{stored=r.settings;}}},
+    runtime:{onMessage:{addListener:fn=>listener=fn},onStartup:event('startup'),onInstalled:event('installed'),openOptionsPage:async()=>{}},
     commands:{onCommand:{addListener(){}}},
     tabs:{
-      query:async()=>tabs,
-      update:async(id,opts)=>{calls.push(['activate',id]);if(id===999)throw Error('Closed');return tabs.find(t=>t.id===id);},
-      create:async opts=>{calls.push(['create',opts]);const tab={id:nextTab++,...opts};tabs.push(tab);return tab;},
-      group:async opts=>{groupCalls.push(opts);if(opts.groupId!==undefined)return opts.groupId;const id=nextGroup++;groups.push({id,windowId:opts.createProperties.windowId});return id;}
+      onActivated:event('activated'),onUpdated:event('updated'),onMoved:event('moved'),onAttached:event('attached'),onRemoved:event('removed'),
+      query:async(q={})=>tabs.filter(t=>(q.groupId===undefined||t.groupId===q.groupId)&&(q.windowId===undefined||t.windowId===q.windowId)&&(q.active===undefined||t.active===q.active)).sort((a,b)=>a.index-b.index),
+      sendMessage:async()=>{},
+      update:async(id,opts)=>{calls.push(['activate',id]);if(id===999)throw Error('Closed');const tab=tabs.find(t=>t.id===id);if(opts.active)tabs.filter(t=>t.windowId===tab.windowId).forEach(t=>t.active=t.id===id);return tab;},
+      create:async opts=>{calls.push(['create',opts]);const tab={id:nextTab++,index:tabs.filter(t=>t.windowId===opts.windowId).length,...opts};tabs.push(tab);return tab;},
+      move:async(id,opts)=>{moveCalls.push([id,opts.index]);return move(id,opts.index);},
+      group:async opts=>{
+        groupCalls.push(opts);let id=opts.groupId;
+        if(id===undefined){id=nextGroup++;groups.push({id,windowId:opts.createProperties.windowId});}
+        for(const tabId of opts.tabIds){const tab=tabs.find(t=>t.id===tabId);tab.groupId=id;}
+        return id;
+      }
     },
-    tabGroups:{query:async q=>groups.filter(g=>g.windowId===q.windowId&&g.title===q.title),update:async(id,opts)=>Object.assign(groups.find(g=>g.id===id),opts)},
+    tabGroups:{query:async q=>groups.filter(g=>(q.windowId===undefined||g.windowId===q.windowId)&&g.title===q.title),update:async(id,opts)=>Object.assign(groups.find(g=>g.id===id),opts)},
     windows:{getLastFocused:async()=>({id:1}),update:async id=>calls.push(['focus',id])}
   };
-  const ctx=vm.createContext({chrome,URL});
+  const ctx=vm.createContext({chrome,URL,setTimeout,clearTimeout});
   const run=file=>vm.runInContext(fs.readFileSync(path.join(__dirname,'..',file),'utf8'),ctx);
   ctx.importScripts=run;run('background.js');
   const send=(message,windowId=1)=>new Promise(resolve=>listener(message,{tab:{windowId}},resolve));
-  return {session,tabs,send,calls,ctx,groupCalls,groups,chrome,stored:()=>stored};
+  return {listeners,moveCalls,session,tabs,send,calls,ctx,groupCalls,groups,chrome,stored:()=>stored};
 }
 test('reuse prefers current window and never creates duplicate',async()=>{
   const s=setup([{id:20,windowId:2,url:'https://mail.google.com/mail/u/1/',lastAccessed:999},{id:10,windowId:1,url:'https://mail.google.com/mail/u/0/',lastAccessed:1}]);
@@ -123,4 +140,29 @@ test('shortcut catalogue matches only intended Google services',()=>{
 });
 test('manifest declares tab URL access explicitly',()=>{
   const m=JSON.parse(fs.readFileSync(path.join(__dirname,'..','manifest.json'),'utf8'));assert.ok(m.permissions.includes('tabs'));
+});
+test('active icon reflects the active tab in the requesting window, and clears on other sites',async()=>{
+  const s=setup([{id:1,windowId:1,active:true,url:'https://mail.google.com/mail/u/0/'},{id:2,windowId:2,active:true,url:'https://gemini.google.com/app'}]);
+  assert.equal((await s.send({type:'running'},1)).activeId,'gmail');assert.equal((await s.send({type:'running'},2)).activeId,'gemini');
+  s.tabs[0].url='https://example.org/';assert.equal((await s.send({type:'running'},1)).activeId,null);
+});
+test('launch group order follows pinned icons and then temporary catalogue order',async()=>{
+  const s=setup([],{dockApps:['gemini','gmail','drive']});
+  for(const appId of ['drive','photos','gmail','gemini'])await s.send({type:'launch',appId});
+  const ordered=s.tabs.filter(t=>t.groupId===1).sort((a,b)=>a.index-b.index);
+  assert.deepEqual(ordered.map(t=>s.ctx.GDock.apps.find(a=>s.ctx.GDock.matches(a,t.url)).id),['gemini','gmail','drive','photos']);
+  const moves=s.moveCalls.length;await s.send({type:'launch',appId:'gmail'});assert.equal(s.moveCalls.length,moves);
+});
+test('dock reorder synchronizes all windows, preserves other tabs and same-app ordering',async()=>{
+  const s=setup([{id:1,windowId:1,index:0,url:'https://example.org/'},{id:2,windowId:1,index:1,groupId:8,url:'https://mail.google.com/mail/u/0/'},{id:3,windowId:1,index:2,groupId:8,url:'https://mail.google.com/mail/u/1/'},{id:4,windowId:1,index:3,groupId:8,url:'https://gemini.google.com/app'},{id:5,windowId:1,index:4,url:'https://other.test/'},{id:6,windowId:2,index:0,groupId:9,url:'https://mail.google.com/mail/u/0/'},{id:7,windowId:2,index:1,groupId:9,url:'https://gemini.google.com/app'}],{dockApps:['gmail','gemini']});
+  s.groups.push({id:8,windowId:1,title:'Google Dock'},{id:9,windowId:2,title:'Google Dock'});
+  await s.send({type:'reorder',appId:'gemini',beforeId:'gmail'});
+  assert.deepEqual(s.tabs.filter(t=>t.windowId===1).sort((a,b)=>a.index-b.index).map(t=>t.id),[1,4,2,3,5]);
+  assert.deepEqual(s.tabs.filter(t=>t.windowId===2).sort((a,b)=>a.index-b.index).map(t=>t.id),[7,6]);
+});
+test('manual group-tab rearrangement is corrected without a move loop',async()=>{
+  const s=setup([],{dockApps:['gmail','gemini']});for(const appId of ['gmail','gemini'])await s.send({type:'launch',appId});
+  await s.chrome.tabs.move(101,{index:0});s.listeners.moved(101,{windowId:1});
+  await new Promise(resolve=>setTimeout(resolve,220));
+  assert.deepEqual(s.tabs.sort((a,b)=>a.index-b.index).map(t=>t.id),[100,101]);
 });

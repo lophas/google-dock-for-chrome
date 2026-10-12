@@ -5,12 +5,13 @@ const fs=require('node:fs');
 const path=require('node:path');
 // DOM fixture verifies the actual content-script event/timer wiring; no browser layout emulation.
 async function setup(){
-  const timers=new Map();let next=0, messageListener, storageListener, running=['gmail'], stored={}, requests=[];
+  const timers=new Map();let next=0, messageListener, storageListener, running=['gmail'], stored={}, requests=[], activeId=null;
   class Element {
     constructor(){this.dataset={};this.children=[];this.handlers={};this.hidden=false;this.value='';this.style={setProperty(){}};this.isConnected=true;this.classList={add:()=>{},remove:()=>{}};}
     append(...items){this.children.push(...items);}
     replaceChildren(){this.children=[];}
     setAttribute(){}
+    removeAttribute(){}
     addEventListener(name,fn){(this.handlers[name]??=[]).push(fn);}
     dispatch(name,e={}){for(const fn of this.handlers[name]||[])fn(e);}
     matches(){return false;}
@@ -24,14 +25,14 @@ async function setup(){
   const nodes=Object.fromEntries(['.dock','.launcher','.search','.strip','.grid','.more','.settings','.status','.context-menu'].map(s=>[s,new Element()]));
   nodes['.launcher'].hidden=true;nodes['.context-menu'].hidden=true;
   const root=new Element(),document=new Element(),window=new Element();document.documentElement=new Element();document.createElement=tag=>{const el=new Element();el.tagName=tag;return el;};document.getElementById=()=>null;
-  const chrome={runtime:{getURL:n=>n,sendMessage:async message=>{requests.push(message);if(message.type==='reorder'){const config=context.GDock.normalize(stored);const ids=config.dockApps.filter(id=>id!==message.appId);ids.splice(message.beforeId==null?ids.length:ids.indexOf(message.beforeId),0,message.appId);config.dockApps=ids;stored=config;return {settings:stored};}if(message.type==='pin'){const config=context.GDock.normalize(stored);config.dockApps=config.dockApps.filter(id=>id!==message.appId);if(message.keep)config.dockApps.push(message.appId);stored=config;return {settings:stored};}return {ids:running};},onMessage:{addListener:fn=>messageListener=fn}},storage:{local:{get:async()=>({})},onChanged:{addListener:fn=>storageListener=fn}}};
+  const chrome={runtime:{getURL:n=>n,sendMessage:async message=>{requests.push(message);if(message.type==='reorder'){const config=context.GDock.normalize(stored);const ids=config.dockApps.filter(id=>id!==message.appId);ids.splice(message.beforeId==null?ids.length:ids.indexOf(message.beforeId),0,message.appId);config.dockApps=ids;stored=config;return {settings:stored};}if(message.type==='pin'){const config=context.GDock.normalize(stored);config.dockApps=config.dockApps.filter(id=>id!==message.appId);if(message.keep)config.dockApps.push(message.appId);stored=config;return {settings:stored};}return {ids:running,activeId};},onMessage:{addListener:fn=>messageListener=fn}},storage:{local:{get:async()=>({})},onChanged:{addListener:fn=>storageListener=fn}}};
   const context=vm.createContext({document,window,chrome,innerHeight:800,innerWidth:1000,URL,fetch:async()=>({text:async()=>''}),setTimeout:(fn,delay)=>{const id=++next;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id),setInterval:()=>{}});
   const run=f=>vm.runInContext(fs.readFileSync(path.join(__dirname,'..',f),'utf8'),context);
   run('shared.js');await run('content.js');
   const shell=root.children[1];
   const move=(x,y)=>document.dispatch('pointermove',{pointerType:'mouse',clientX:x,clientY:y});
   const tick=delay=>{for(const [id,t]of [...timers])if(t.delay===delay){timers.delete(id);t.fn();}};
-  return {requests,setRunning:ids=>running=ids,refresh:async()=>{messageListener({type:'toggle-dock'});await new Promise(setImmediate);},move,tick,timers,shell,nodes,document,window,toggle:()=>messageListener({type:'toggle-dock'}),settings:s=>storageListener({settings:{newValue:s}},'local')};
+  return {setActive:id=>activeId=id,stateChanged:()=>messageListener({type:'dock-state-changed'}),requests,setRunning:ids=>running=ids,refresh:async()=>{messageListener({type:'toggle-dock'});await new Promise(setImmediate);},move,tick,timers,shell,nodes,document,window,toggle:()=>messageListener({type:'toggle-dock'}),settings:s=>storageListener({settings:{newValue:s}},'local')};
 }
 test('edge dwell cancels on departure and can reveal repeatedly',async()=>{
   const s=await setup();s.move(500,799);assert.equal(s.shell.dataset.visible,'false');s.move(500,500);s.tick(100);assert.equal(s.shell.dataset.visible,'false');
@@ -90,4 +91,14 @@ test('dock drag-and-drop persists insertion and never launches the dragged app',
   assert.equal(s.requests.find(r=>r.type==='reorder').beforeId,'gmail');
   assert.equal(s.nodes['.strip'].children[0].dataset.appId,'gemini');
   gemini.dispatch('click',{preventDefault(){}});assert.equal(s.requests.some(r=>r.type==='launch'),false);
+});
+
+test('active app has a distinct marker that follows pushed tab changes and clears',async()=>{
+  const s=await setup();s.setActive('gmail');await s.refresh();
+  let gmail=s.nodes['.strip'].children.find(b=>b.dataset.appId==='gmail');
+  assert.equal(gmail.dataset.active,'true');assert.equal(gmail.dataset.running,'true');
+  s.setActive('gemini');s.stateChanged();await new Promise(setImmediate);
+  assert.equal(gmail.dataset.active,'false');assert.equal(s.nodes['.strip'].children.find(b=>b.dataset.appId==='gemini').dataset.active,'true');
+  s.setActive(null);s.stateChanged();await new Promise(setImmediate);
+  assert.equal(s.nodes['.strip'].children.some(b=>b.dataset.active==='true'),false);
 });

@@ -9,7 +9,7 @@ A macOS-inspired, auto-hiding dock for Google apps, built as a dependency-free C
 3. Click **Load unpacked** and select the extracted folder containing `manifest.json`.
 4. Refresh an existing website tab. Move the mouse to the bottom **center** of the page and pause briefly to reveal the dock.
 
-## Version 0.3.0
+## Version 0.4.0
 
 - Floating glass dock with hover magnification and a delayed hide.
 - Drag pinned icons directly in the dock to reorder them. A blue insertion marker shows the destination; order is saved across tabs.
@@ -21,6 +21,8 @@ A macOS-inspired, auto-hiding dock for Google apps, built as a dependency-free C
 - Ctrl/Cmd/Shift-click forces a new tab. Middle-click opens a background tab.
 - Right-click any dock or launcher icon for **Keep in Dock** and **Open New Tab**. Unpinned running apps appear to the right of a separator and disappear after their last tab closes (indicators refresh every four seconds while the dock is visible).
 - Apps opened or activated through the dock or toolbar launcher join a blue **Google Dock** native Chrome tab group in their own window. Concurrent launches reuse the same group. Chrome-pinned tabs remain pinned and display a grouping warning.
+- The active app in the dock’s browser window has a blue background and a wider blue indicator; ordinary running apps retain a dot. Tab activation and navigation push an update to the active page. Non-Google active tabs clear the active-app marker.
+- Native Google Dock group tabs follow pinned-icon order, then temporary-app catalogue order. Dock reordering/pinning synchronizes every window; app launches, navigation and manual group-tab moves also trigger sorting. Multiple tabs of the same app retain their relative order, while unrelated tabs manually added to the group stay at the end. The sorter preserves the group’s position among other tabs.
 - Running dots refresh when revealed and every four seconds while visible.
 - Searchable all-app launcher, also available from the toolbar on restricted pages.
 - Settings: pinned apps, drag-and-drop and keyboard-button reordering, three icon sizes, light/dark/system theme, activation-zone height, autohide, tab reuse and enable switch.
@@ -48,10 +50,14 @@ node --test tests/*.test.cjs
 
 Automated tests cover tab reuse and creation, rapid same-app launches, remembered tabs and sign-in redirects, pending URL detection, dock drag-and-drop persistence and click suppression, shortcut matching, app matching, settings validation, concurrent pin changes and group creation, per-window grouping, grouping-failure handling, temporary running apps, right-click pinning, configurable trigger height, repeated edge reveal, dwell cancellation, the grace corridor, Escape, disabling and fullscreen suppression. Content-script tests use a DOM fixture; visual layout and actual Chrome API integration still need the manual checks below.
 
-Manual acceptance checks: reveal at the bottom center; move into the dock and down through its gap; leave and verify delayed hiding; search apps and right-click to pin/unpin; close all tabs of a temporary app and verify removal; check group creation/reuse in multiple windows; test existing-tab focus, forced new tabs and middle clicks; change settings and reorder apps; verify narrow viewports, dark mode, keyboard focus, Escape and fullscreen.
+Manual acceptance checks: reveal at the bottom center; move into the dock and down through its gap; leave and verify delayed hiding; search apps and right-click to pin/unpin; close all tabs of a temporary app and verify removal; check group creation/reuse in multiple windows; test existing-tab focus, forced new tabs and middle clicks; change settings and reorder apps; verify active-app highlighting while switching apps and visiting non-Google sites; verify group tab order after dragging dock icons and manually dragging tabs; verify narrow viewports, dark mode, keyboard focus, Escape and fullscreen.
 
 Google Dock for Chrome is an independent project and is not affiliated with Google. The existing repository GPL-3.0 license applies; see [LICENSE](LICENSE).
 
 ## Updating from an earlier version
 
 Replace the unpacked extension folder, reload it in `chrome://extensions`, and refresh website tabs. Existing settings are preserved; activation-zone height defaults to 24 px. Version 0.2 added `tabGroups`; version 0.3 adds `tabs` for reliable app-tab detection. Keep **Switch to an existing app tab when available** enabled for persistent reuse.
+
+## Restricted browser pages
+
+A webpage overlay cannot be placed on `chrome://settings`, `chrome://extensions` or Chrome-generated network error pages. These surfaces prohibit extension content scripts, regardless of the autohide setting. Use the toolbar launcher or **Alt+Shift+G** fallback there. Ordinary HTTP/HTTPS pages that display a website-generated error remain normal webpages and use the configured dock behavior.
