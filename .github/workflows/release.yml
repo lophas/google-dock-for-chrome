@@ -1,0 +1,48 @@
+name: Package and publish release
+on:
+  push:
+    branches: [main]
+    paths: [manifest.json, .github/workflows/release.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: google-dock-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and test
+        run: |
+          for file in *.js; do node --check "$file"; done
+          node --test tests/*.test.cjs
+      - name: Package and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          VERSION=$(node -p "require('./manifest.json').version")
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$VERSION" != "1.0.0" ]; then exit 0; fi
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then exit 0; fi
+          PACKAGE="google-dock-for-chrome-$VERSION"
+          mkdir "$PACKAGE"
+          cp manifest.json background.js shared.js content.js dock.css popup.html popup.js options.html options.js pages.css README.md LICENSE "$PACKAGE/"
+          cp -R icons "$PACKAGE/"
+          zip -qr "$PACKAGE.zip" "$PACKAGE"
+          cat > release-notes.md <<'NOTES'
+          A floating, auto-hiding dock for Google apps, with app search, persistent tab reuse, pinning and drag-and-drop ordering.
+
+          - Open/Close app menus and active-app indicators.
+          - Google Dock tab groups that follow icon order.
+          - Shared dock state across tabs.
+          - Google app and account-management shortcuts.
+          - Customizable theme, icon size and activation zone.
+
+          **Install:** Download the attached ZIP, extract it, then select the extracted folder using **Load unpacked** at `chrome://extensions` with **Developer mode** enabled. Refresh existing website tabs.
+
+          **Update:** Replace your extension files, reload the extension and refresh website tabs. Existing settings are preserved.
+          NOTES
+          gh release create "$TAG" "$PACKAGE.zip" --target "$GITHUB_SHA" --title "Google Dock for Chrome $VERSION" --notes-file release-notes.md --latest
