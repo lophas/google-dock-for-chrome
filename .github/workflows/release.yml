@@ -24,7 +24,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           VERSION=$(node -p "require('./manifest.json').version")
-          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$VERSION" != "1.0.1" ]; then exit 0; fi
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$VERSION" != "1.0.2" ]; then exit 0; fi
           TAG="v$VERSION"
           if gh release view "$TAG" >/dev/null 2>&1; then exit 0; fi
           PACKAGE="google-dock-for-chrome-$VERSION"
@@ -33,8 +33,9 @@ jobs:
           cp -R icons "$PACKAGE/"
           zip -qr "$PACKAGE.zip" "$PACKAGE"
           cat > release-notes.md <<'NOTES'
-          Backup and restore your pinned Google Dock apps from Settings.
+          Set your dock background transparency from Settings, and back up your favorite apps.
 
+          - **Dock background transparency:** choose 0–100% with a percentage slider; app icons stay fully visible.
           - **Download backup:** save pinned apps and their exact order as a JSON file.
           - **Restore from file:** replace the pinned list without changing appearance or behavior settings.
           - Invalid or unsupported backup files are rejected without changing the dock.

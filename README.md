@@ -37,7 +37,7 @@ Gmail, Calendar, Drive, Docs, Sheets, Slides, Meet, Chat, Keep, Photos, Maps, Yo
 
 ## Customize
 
-Open **Settings** from the app menu or toolbar launcher to choose favorites, icon size, theme, autohide and tab reuse.
+Open **Settings** from the app menu or toolbar launcher to choose favorites, icon size, theme, dock background transparency, autohide and tab reuse.
 
 **Using the macOS Dock?** Increase **Activation zone height** to reveal Google Dock before reaching the screen’s bottom edge. The default is **24 px**.
 

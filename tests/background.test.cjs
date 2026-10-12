@@ -199,3 +199,9 @@ test('launch closes the shared app menu before opening or focusing the target ta
   await s.send({type:'launch',appId:'gemini'});
   const state=await s.send({type:'state-get'});assert.equal(state.ui.launcherOpen,false);assert.equal(state.ui.search,'');
 });
+test('transparency supports both endpoints and survives pinned-list restore',async()=>{
+  const s=setup();assert.equal(s.ctx.GDock.normalize().transparency,12);
+  for(const value of [0,100]){await s.send({type:'settings-patch',patch:{transparency:value}});assert.equal(s.stored().transparency,value);}
+  await s.send({type:'settings-patch',patch:{dockApps:['gemini','gmail']}});assert.equal(s.stored().transparency,100);
+  for(const value of [-1,101,'50',null])assert.equal(s.ctx.GDock.normalize({transparency:value}).transparency,12);
+});

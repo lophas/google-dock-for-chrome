@@ -1,6 +1,6 @@
 let config=GDock.normalize(), order=[], dragged;
 const status=document.getElementById('status');
-const fields=['enabled','autoHide','reuseTabs','size','triggerHeight','theme'];
+const fields=['enabled','autoHide','reuseTabs','size','triggerHeight','transparency','theme'];
 function rebuildOrder(){order=[...config.dockApps,...GDock.apps.map(a=>a.id).filter(id=>!config.dockApps.includes(id))];}
 let pendingSave=Promise.resolve();
 function save(patch){const copy=JSON.parse(JSON.stringify(patch));pendingSave=pendingSave.then(()=>performSave(copy));return pendingSave;}
@@ -43,11 +43,12 @@ function render(){
 }
 function controls(){
   for(const id of fields){const el=document.getElementById(id);if(el.type==='checkbox')el.checked=config[id];else el.value=config[id];}
+  document.getElementById('transparency-value').textContent=config.transparency+'%';
 }
 (async()=>{
   config=GDock.normalize((await chrome.storage.local.get('settings')).settings);rebuildOrder();controls();render();
   for(const id of fields)document.getElementById(id).onchange=e=>{
-    const value=e.target.type==='checkbox'?e.target.checked:['size','triggerHeight'].includes(id)?Number(e.target.value):e.target.value;
+    const value=e.target.type==='checkbox'?e.target.checked:['size','triggerHeight','transparency'].includes(id)?Number(e.target.value):e.target.value;
     config[id]=value;save({[id]:value});
   };
   document.getElementById('reset').onclick=()=>save(GDock.normalize());
@@ -86,3 +87,5 @@ backupFile.addEventListener('change',async()=>{
   } catch(e){backupStatus.textContent='Restore failed: '+e.message;}
   finally{backupBusy(false);backupFile.value='';}
 });
+
+document.getElementById('transparency').addEventListener('input',e=>document.getElementById('transparency-value').textContent=e.target.value+'%');
