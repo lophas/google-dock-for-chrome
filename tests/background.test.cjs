@@ -192,3 +192,10 @@ test('app close refreshes the central running state immediately',async()=>{
   const s=setup([{id:1,windowId:1,active:true,url:'https://gemini.google.com/app'}]);assert.ok((await s.send({type:'state-get'})).ids.includes('gemini'));
   await s.send({type:'close',appId:'gemini'});assert.equal((await s.send({type:'state-get'})).ids.includes('gemini'),false);
 });
+test('launch closes the shared app menu before opening or focusing the target tab',async()=>{
+  const s=setup([{id:1,windowId:1,active:true,url:'https://example.org/'}]);
+  await s.send({type:'ui-patch',patch:{visible:true,launcherOpen:true,search:'gem'}});
+  const create=s.chrome.tabs.create;s.chrome.tabs.create=async opts=>{assert.equal(s.session.dockState.uiByWindow[1].launcherOpen,false);return create(opts);};
+  await s.send({type:'launch',appId:'gemini'});
+  const state=await s.send({type:'state-get'});assert.equal(state.ui.launcherOpen,false);assert.equal(state.ui.search,'');
+});

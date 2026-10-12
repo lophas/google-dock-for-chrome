@@ -123,3 +123,14 @@ test('hidden page preserves shared UI for the next tab and has no per-page polli
   assert.equal(s.shell.dataset.visible,'true');assert.equal(s.nodes['.launcher'].hidden,false);
   const code=fs.readFileSync(path.join(__dirname,'..','content.js'),'utf8');assert.doesNotMatch(code,/setInterval/);
 });
+test('app-menu launch closes its local and shared UI, including middle click',async()=>{
+  for(const middle of [false,true]){
+    const s=await setup();s.toggle();s.nodes['.more'].dispatch('click');
+    const app=s.nodes['.grid'].children.find(b=>b.dataset.appId==='photos');
+    app.dispatch(middle?'auxclick':'click',{button:middle?1:0,preventDefault(){}});
+    assert.equal(s.nodes['.launcher'].hidden,true);
+    const patch=s.requests.filter(r=>r.type==='ui-patch').at(-1).patch;
+    assert.equal(patch.launcherOpen,false);assert.equal(patch.search,'');
+    await new Promise(setImmediate);assert.ok(s.requests.some(r=>r.type==='launch'&&r.appId==='photos'));
+  }
+});

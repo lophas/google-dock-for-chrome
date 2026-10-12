@@ -98,7 +98,11 @@ async function groupResult(tab, reveal) {
 // Same-app launches are serialized, including clicks from different content scripts.
 const appQueues=new Map();
 function launch(message,sender) {
-  const task=(appQueues.get(message.appId)||Promise.resolve()).catch(()=>{}).then(async()=>{const result=await launchOne(message,sender);await refreshDockState();return result;});
+  const task=(appQueues.get(message.appId)||Promise.resolve()).catch(()=>{}).then(async()=>{
+    const windowId=sender.tab?.windowId ?? (await chrome.windows.getLastFocused()).id;
+    await refreshDockState({windowId,patch:{launcherOpen:false,search:''}});
+    const result=await launchOne(message,sender);await refreshDockState();return result;
+  });
   appQueues.set(message.appId,task);
   task.finally(()=>{if(appQueues.get(message.appId)===task)appQueues.delete(message.appId);}).catch(()=>{});
   return task;

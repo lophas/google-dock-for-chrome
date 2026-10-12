@@ -9,7 +9,7 @@ A macOS-inspired, auto-hiding dock for Google apps, built as a dependency-free C
 3. Click **Load unpacked** and select the extracted folder containing `manifest.json`.
 4. Refresh an existing website tab. Move the mouse to the bottom **center** of the page and pause briefly to reveal the dock.
 
-## Version 0.5.0
+## Version 0.5.1
 
 - Floating glass dock with hover magnification and a delayed hide.
 - Drag pinned icons directly in the dock to reorder them. A blue insertion marker shows the destination; order is saved across tabs.
@@ -24,7 +24,8 @@ A macOS-inspired, auto-hiding dock for Google apps, built as a dependency-free C
 - The active app in the dock’s browser window has a blue background and a wider blue indicator; ordinary running apps retain a dot. Tab activation and navigation push an update to the active page. Non-Google active tabs clear the active-app marker.
 - Native Google Dock group tabs follow pinned-icon order, then temporary-app catalogue order. Dock reordering/pinning synchronizes every window; app launches, navigation and manual group-tab moves also trigger sorting. Multiple tabs of the same app retain their relative order, while unrelated tabs manually added to the group stay at the end. The sorter preserves the group’s position among other tabs.
 - One service-worker dock model owns settings, running apps, active apps by window and UI state. All page views consume this snapshot. Browser events refresh it and push changes; page scripts do not poll or scan tabs. Window-level dock visibility, launcher openness and search text survive tab switches. The model is stored in session storage across service-worker suspension; app settings remain in local storage across browser restarts. A separate DOM view is still required in each webpage, because an extension cannot share one DOM node across page documents.
-- Generated extension thumbnail and packaged 16/32/48/128 px icons are connected to the manifest and toolbar action.
+- High-contrast launcher-grid thumbnail and packaged 16/32/48/128 px icons are connected to the manifest and toolbar action.
+- Opening an app closes the app menu locally and in the shared state before tab activation, including modifier and middle clicks.
 - Searchable all-app launcher, also available from the toolbar on restricted pages.
 - Settings: pinned apps, drag-and-drop and keyboard-button reordering, three icon sizes, light/dark/system theme, activation-zone height, autohide, tab reuse and enable switch.
 - **Alt+Shift+G** toggles the dock; customize via `chrome://extensions/shortcuts`. **Escape** closes it. The dock stays hidden during webpage fullscreen.
@@ -65,4 +66,4 @@ A webpage overlay cannot be placed on `chrome://settings`, `chrome://extensions`
 
 ## Icon asset
 
-The thumbnail was generated with the built-in ImageGen tool, then resized for Chrome packaging. The original prompt is in [icons/prompt.txt](icons/prompt.txt); the full thumbnail is [icons/thumbnail.png](icons/thumbnail.png).
+The current icon follows the user’s Google launcher reference: a flat 3×3 grid of colored squares on a light disc. The editable vector source is [icons/launcher.svg](icons/launcher.svg); the PNG thumbnail is [icons/thumbnail.png](icons/thumbnail.png). It replaces the earlier detailed dock illustration for better legibility in the toolbar.

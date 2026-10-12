@@ -22,11 +22,15 @@
   }
   function cancelHide() { clearTimeout(hideTimer); hideTimer=undefined; }
   function hideLater() { if(hideTimer) return; if(config.autoHide && launcher.hidden && menu.hidden && !draggedApp && !dock.matches(':focus-within')) hideTimer=setTimeout(()=>{hideTimer=undefined;setVisible(false);},380); }
+  function launchApp(app,flags={}) {
+    launcher.hidden=true;search.value='';closeMenu(false);saveUI();hideLater();
+    return request({type:'launch',appId:app.id,...flags});
+  }
   function button(app, tile=false) {
     const b=document.createElement('button'); b.className=tile?'tile':'app'; b.dataset.appId=app.id; b.setAttribute('aria-label',app.name); b.title=app.name; b.innerHTML=app.icon;
     if(tile){const label=document.createElement('span'); label.textContent=app.name; b.append(label);}
-    b.addEventListener('click',e=>{if(suppressClick || draggedApp){e.preventDefault();return;}request({type:'launch',appId:app.id,newTab:e.ctrlKey||e.metaKey||e.shiftKey}).catch(error);});
-    b.addEventListener('auxclick',e=>{if(e.button===1){e.preventDefault();request({type:'launch',appId:app.id,newTab:true,background:true}).catch(error);}});
+    b.addEventListener('click',e=>{if(suppressClick || draggedApp){e.preventDefault();return;}launchApp(app,{newTab:e.ctrlKey||e.metaKey||e.shiftKey}).catch(error);});
+    b.addEventListener('auxclick',e=>{if(e.button===1){e.preventDefault();launchApp(app,{newTab:true,background:true}).catch(error);}});
     b.addEventListener('contextmenu',e=>{e.preventDefault();showMenu(app,b,e);});
     if(!tile && config.dockApps.includes(app.id)) {
       b.draggable=true;
@@ -87,7 +91,7 @@
     });
     const isOpen=running.includes(app.id);
     const open=document.createElement('button'); open.setAttribute('role','menuitem'); open.textContent=isOpen?'Close':'Open';
-    open.addEventListener('click',()=>{closeMenu(false);request({type:isOpen?'close':'launch',appId:app.id}).catch(error);hideLater();});
+    open.addEventListener('click',()=>{closeMenu(false);(isOpen?request({type:'close',appId:app.id}):launchApp(app)).catch(error);hideLater();});
     menu.append(pin,open); menu.hidden=false;
     const rect=origin.getBoundingClientRect();
     const x=event.clientX || rect.left, y=event.clientY || rect.top;
