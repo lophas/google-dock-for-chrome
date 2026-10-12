@@ -24,7 +24,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           VERSION=$(node -p "require('./manifest.json').version")
-          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$VERSION" != "1.0.0" ]; then exit 0; fi
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$VERSION" != "1.0.1" ]; then exit 0; fi
           TAG="v$VERSION"
           if gh release view "$TAG" >/dev/null 2>&1; then exit 0; fi
           PACKAGE="google-dock-for-chrome-$VERSION"
@@ -33,13 +33,11 @@ jobs:
           cp -R icons "$PACKAGE/"
           zip -qr "$PACKAGE.zip" "$PACKAGE"
           cat > release-notes.md <<'NOTES'
-          A floating, auto-hiding dock for Google apps, with app search, persistent tab reuse, pinning and drag-and-drop ordering.
+          Backup and restore your pinned Google Dock apps from Settings.
 
-          - Open/Close app menus and active-app indicators.
-          - Google Dock tab groups that follow icon order.
-          - Shared dock state across tabs.
-          - Google app and account-management shortcuts.
-          - Customizable theme, icon size and activation zone.
+          - **Download backup:** save pinned apps and their exact order as a JSON file.
+          - **Restore from file:** replace the pinned list without changing appearance or behavior settings.
+          - Invalid or unsupported backup files are rejected without changing the dock.
 
           **Install:** Download the attached ZIP, extract it, then select the extracted folder using **Load unpacked** at `chrome://extensions` with **Developer mode** enabled. Refresh existing website tabs.
 

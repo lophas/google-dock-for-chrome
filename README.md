@@ -6,7 +6,7 @@ Your Google apps in a floating, macOS-style dock. Reveal it at the bottom of a w
 
 ## Install
 
-1. Download **google-dock-for-chrome-1.0.0.zip** from the [latest release](https://github.com/lophas/google-dock-for-chrome/releases/latest) and extract it.
+1. Download the **release ZIP** from the [latest release](https://github.com/lophas/google-dock-for-chrome/releases/latest) and extract it.
 2. Open `chrome://extensions` and turn on **Developer mode**.
 3. Click **Load unpacked** and select the extracted folder containing `manifest.json`.
 4. Refresh your open website tabs. Pin the extension to Chrome’s toolbar for quick access to the app menu.
