@@ -17,11 +17,12 @@ globalThis.GDock = (() => {
     ['youtube','YouTube','https://www.youtube.com/','www.youtube.com','/',svg('<rect x="2" y="10" width="44" height="29" rx="10" fill="#ff0033"/><path fill="white" d="M20 17v15l13-7.5z"/>')],
     ['gemini','Gemini','https://gemini.google.com/','gemini.google.com','/',svg('<defs><linearGradient id="gem"><stop stop-color="#4285f4"/><stop offset="1" stop-color="#a142f4"/></linearGradient></defs><path fill="url(#gem)" d="M24 1C27 16 32 21 47 24 32 27 27 32 24 47 21 32 16 27 1 24 16 21 21 16 24 1Z"/>')]
   ].map(([id,name,url,host,path,icon]) => ({id,name,url,host,path,icon}));
-  const defaults = {enabled:true, autoHide:true, size:46, theme:'auto', reuseTabs:true, dockApps:['gmail','calendar','drive','docs','sheets','meet','keep','youtube','gemini']};
+  const defaults = {enabled:true, autoHide:true, size:46, triggerHeight:24, theme:'auto', reuseTabs:true, dockApps:['gmail','calendar','drive','docs','sheets','meet','keep','youtube','gemini']};
   function normalize(raw = {}) {
     const s = {...defaults,...raw};
     for (const k of ['enabled','autoHide','reuseTabs']) s[k] = typeof s[k] === 'boolean' ? s[k] : defaults[k];
     s.size = [38,46,54].includes(s.size) ? s.size : 46;
+    s.triggerHeight = [4,16,24,32].includes(s.triggerHeight) ? s.triggerHeight : 24;
     s.theme = ['auto','light','dark'].includes(s.theme) ? s.theme : 'auto';
     s.dockApps = Array.isArray(s.dockApps) ? [...new Set(s.dockApps)].filter(id=>apps.some(a=>a.id===id)) : [...defaults.dockApps];
     return s;
