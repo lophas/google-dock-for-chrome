@@ -4,6 +4,24 @@
 
 Keep your Google apps one click away — in a floating dock or a searchable toolbar launcher.
 
+## Screenshots
+
+**Bottom dock**
+
+![Google Dock at the bottom of a demo webpage](docs/screenshots/dock-bottom.png)
+
+**App menu with running-app indicators**
+
+![Google app menu and dock](docs/screenshots/app-menu.png)
+
+**Top dock**
+
+![Google Dock at the top of a demo webpage](docs/screenshots/dock-top.png)
+
+**Settings**
+
+![Google Dock settings](docs/screenshots/settings.png)
+
 ## Install
 
 1. Download the **release ZIP** from the [latest release](https://github.com/lophas/google-dock-for-chrome/releases/latest) and extract it.
