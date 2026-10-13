@@ -154,3 +154,9 @@ test('app-menu dots update when app tabs open and close, including filtered resu
   assert.equal(s.nodes['.grid'].children[0].dataset.running,'true');
   s.setRunning([]);s.stateChanged();await new Promise(setImmediate);assert.equal(s.nodes['.grid'].children[0].dataset.running,'false');
 });
+test('Disabled mode hides the webpage dock even with autohide off and ignores both edges',async()=>{
+  const s=await setup();s.toggle();s.settings({triggerEdge:'disabled',autoHide:false});assert.equal(s.shell.dataset.visible,'false');
+  for(const y of [0,799]){s.move(500,y);s.tick(100);assert.equal(s.shell.dataset.visible,'false');}
+  s.toggle();assert.equal(s.shell.dataset.visible,'false');assert.equal(s.nodes['.launcher'].hidden,true);
+  s.settings({triggerEdge:'top',enabled:true,autoHide:false});assert.equal(s.shell.dataset.visible,'true');
+});

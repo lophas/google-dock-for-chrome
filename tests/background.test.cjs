@@ -17,7 +17,7 @@ function setup(tabs=[],settings={}) {
   const chrome={
     storage:{onChanged:event('storageChanged'),session:{get:async key=>key===null?session:{[key]:session[key]},set:async r=>Object.assign(session,r)},local:{get:async()=>({settings:stored}),set:async r=>{stored=r.settings;}}},
     runtime:{onMessage:{addListener:fn=>listener=fn},onStartup:event('startup'),onInstalled:event('installed'),openOptionsPage:async()=>{}},
-    commands:{onCommand:{addListener(){}}},
+    commands:{onCommand:event('command')},
     tabs:{
       onCreated:event('created'),onActivated:event('activated'),onUpdated:event('updated'),onMoved:event('moved'),onAttached:event('attached'),onRemoved:event('removed'),
       query:async(q={})=>tabs.filter(t=>(q.groupId===undefined||t.groupId===q.groupId)&&(q.windowId===undefined||t.windowId===q.windowId)&&(q.active===undefined||t.active===q.active)).sort((a,b)=>a.index-b.index),
@@ -240,4 +240,10 @@ test('dock edge is saved centrally and backup restore leaves it unchanged',async
   const s=setup();await s.send({type:'settings-patch',patch:{triggerEdge:'top'}});assert.equal((await s.send({type:'state-get'})).settings.triggerEdge,'top');
   await s.send({type:'settings-patch',patch:{dockApps:['photos']}});assert.equal(s.stored().triggerEdge,'top');
   assert.equal(s.ctx.GDock.normalize({triggerEdge:'unknown'}).triggerEdge,'bottom');
+});
+test('Disabled mode keyboard command opens the toolbar instead of messaging the page',async()=>{
+  const s=setup([],{triggerEdge:'disabled'});let popups=0,pageMessages=0;
+  s.chrome.action={openPopup:async()=>popups++};s.chrome.tabs.sendMessage=async()=>pageMessages++;
+  await s.listeners.command('toggle-dock');assert.equal(popups,1);assert.equal(pageMessages,0);
+  assert.equal(s.ctx.GDock.normalize({enabled:false}).triggerEdge,'disabled');
 });

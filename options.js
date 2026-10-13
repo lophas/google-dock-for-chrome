@@ -1,6 +1,6 @@
 let config=GDock.normalize(), order=[], dragged;
 const status=document.getElementById('status');
-const fields=['enabled','autoHide','reuseTabs','size','triggerHeight','triggerEdge','transparency','theme'];
+const fields=['autoHide','reuseTabs','size','triggerHeight','triggerEdge','transparency','theme'];
 function rebuildOrder(){order=[...config.dockApps,...GDock.apps.map(a=>a.id).filter(id=>!config.dockApps.includes(id))];}
 let pendingSave=Promise.resolve();
 function save(patch){const copy=JSON.parse(JSON.stringify(patch));pendingSave=pendingSave.then(()=>performSave(copy));return pendingSave;}
@@ -49,7 +49,9 @@ function controls(){
   config=GDock.normalize((await chrome.storage.local.get('settings')).settings);rebuildOrder();controls();render();accountLabel();
   for(const id of fields)document.getElementById(id).onchange=e=>{
     const value=e.target.type==='checkbox'?e.target.checked:['size','triggerHeight','transparency'].includes(id)?Number(e.target.value):e.target.value;
-    config[id]=value;save({[id]:value});
+    config[id]=value;
+    if(id==='triggerEdge'){config.enabled=value!=='disabled';save({triggerEdge:value,enabled:config.enabled});}
+    else save({[id]:value});
   };
   document.getElementById('reset').onclick=()=>save(GDock.normalize());
   chrome.storage.onChanged.addListener((changes,area)=>{

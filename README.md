@@ -2,78 +2,72 @@
 
 # Google Dock for Chrome
 
-Your Google apps in a floating, macOS-style dock. Reveal it at the bottom of a webpage, switch between apps and keep your favorites close at hand.
+Keep your Google apps one click away — in a floating dock or a searchable toolbar launcher.
 
 ## Install
 
 1. Download the **release ZIP** from the [latest release](https://github.com/lophas/google-dock-for-chrome/releases/latest) and extract it.
-2. Open `chrome://extensions` and turn on **Developer mode**.
+2. Open `chrome://extensions` and enable **Developer mode**.
 3. Click **Load unpacked** and select the extracted folder containing `manifest.json`.
-4. Refresh your open website tabs. Pin the extension to Chrome’s toolbar for quick access to the app menu.
+4. Refresh your open website tabs and pin **Google Dock** to Chrome’s toolbar.
 
-## Use the dock
+To update, replace the extension files, click **Reload** and refresh your website tabs. Your settings are preserved.
 
-Move the pointer to the **bottom center** of a webpage (or **top center** when the top edge is selected) and pause briefly to reveal the dock. It hides when you move away.
+## Quick start
 
-| Action | What it does |
+- Move the pointer to the **bottom center** of a webpage to reveal the dock.
+- Click an app to open it or return to its existing tab.
+- Click the **grid button** to search all apps.
+- Right-click an icon and choose **Keep in Dock** to add or remove a favorite.
+- Drag your pinned icons to put them in your preferred order.
+
+Open **Settings** from the app menu or toolbar launcher to choose how you want to use it:
+
+| Dock edge | Experience |
 | --- | --- |
-| Click an app | Switch to its existing tab, or open it if needed |
+| **Bottom** | Reveal the dock at the bottom of the page |
+| **Top** | Reveal the dock at the top of the page |
+| **Disabled — toolbar only** | Hide the webpage dock and access apps from the toolbar |
+
+## Features
+
+- **Persistent app tabs:** switch to the app you already have open, without creating duplicates.
+- **Clear activity indicators:** a dot shows running apps in the dock and app menu; blue marks the active app.
+- **Favorites and running apps:** keep selected icons pinned; other open apps appear to their right.
+- **Organized tabs:** app tabs join a **Google Dock** group and follow your icon order.
+- **Shared experience:** your favorites and app-menu state follow you across tabs. Opening an app dismisses the menu.
+- **Custom appearance:** choose icon size, light/dark/system theme, background transparency and autohide. The dock has a subtle 4 px blur.
+- **Flexible activation:** adjust the trigger-zone height. A taller zone can help avoid conflict with the macOS Dock.
+- **Backup & restore:** save your pinned apps and their order to a JSON file, then restore them when needed.
+- **Different accounts per app:** remember a preferred signed-in Google account for Photos or another app.
+
+## Controls
+
+| Action | Result |
+| --- | --- |
+| Click an app | Open it or activate its existing tab |
 | Ctrl/Cmd/Shift-click | Open a new tab |
-| Middle-click | Open a new background tab |
-| Right-click → **Keep in Dock** | Pin or unpin the app |
+| Middle-click | Open a background tab |
 | Right-click → **Open / Close** | Open the app or close one of its tabs |
-| Drag a pinned icon | Change the dock order |
-| Click the grid button | Search all apps and add favorites |
-| **Alt+Shift+G** | Show or hide the dock |
+| **Alt+Shift+G** | Toggle the dock; in Disabled mode, open the toolbar launcher |
 | **Escape** | Dismiss the context menu or dock |
 
-A dot marks a running app in both the dock and app menu; a blue highlight marks the active app. Unpinned running apps appear to the right of the favorites and disappear when their last tab closes.
+Customize the keyboard shortcut at `chrome://extensions/shortcuts`.
 
-App tabs are collected in a **Google Dock** Chrome tab group, in the same order as the dock icons. The dock and app menu share their state across tabs. Opening an app closes the app menu.
+## Apps & shortcuts
 
-## Available apps
+Gmail, Calendar, Drive, Docs, Sheets, Slides, Meet, Chat, Keep, Photos, Maps, YouTube and Gemini, plus Payments, Password Manager, Google Account, Contacts and Google One.
 
-Gmail, Calendar, Drive, Docs, Sheets, Slides, Meet, Chat, Keep, Photos, Maps, YouTube and Gemini, plus shortcuts to Payments, Password Manager, Google Account, Contacts and Google One.
+## Accounts & backups
 
-## Customize
+**Choose an app account:** open the app, switch to the Google account you want, then go to Settings → **Google accounts per app**, select the app and click **Remember last-used app account**. Both accounts must be signed in within the same Chrome profile. **Use automatic account** clears the choice.
 
-Open **Settings** from the app menu or toolbar launcher to choose favorites, icon size, theme, dock background transparency, autohide and tab reuse.
+**Save your favorites:** Settings → **Backup & restore** → **Download backup**. **Restore from file** replaces your pinned list and order while preserving appearance and account settings.
 
-Choose **Dock edge → Top / Bottom** in Settings. The dock and app menu follow the selected edge; bottom remains the default.
+## Availability
 
-**Using the macOS Dock?** Increase **Activation zone height** to reveal Google Dock before reaching the screen’s bottom edge. The default is **24 px**.
+Use the toolbar launcher on Chrome settings, browser error pages, the Chrome Web Store and the built-in PDF viewer. The webpage dock stays hidden during fullscreen.
 
-**Dock background transparency** controls the background tint: **0%** is opaque and **100%** is transparent. A subtle **4 px blur** remains at every setting; app icons stay fully visible.
-
-Change the keyboard shortcut at `chrome://extensions/shortcuts`.
-
-## Use a different Google account
-
-You can remember a separate signed-in account for each app, for example a different account for Photos.
-
-1. Open the app and select the account you want to use.
-2. Return to Settings → **Google accounts per app** and choose the app.
-3. Click **Remember last-used app account**.
-
-The dock opens and reuses tabs for that account. If its tab is in another window, the dock brings it into your current window. **Use automatic account** clears the saved choice.
-
-Both accounts must be signed in within the **same Chrome profile**. If your sign-in order changes, remember the account again. An app can be remembered only when its URL identifies the account.
-
-## Backup & restore
-
-In Settings → **Backup & restore**:
-
-- **Download backup** saves your pinned apps and their order as a JSON file.
-- **Restore from file** replaces the pinned list with a saved backup.
-
-Your theme, transparency and app-account choices are kept as they are; they are not included in the pinned-app backup.
-
-## Good to know
-
-- On Chrome settings, browser error pages, the Chrome Web Store and the built-in PDF viewer, use the **toolbar launcher** instead of the webpage dock.
-- The dock stays hidden during webpage fullscreen.
-- To update, replace the extension files, click **Reload** at `chrome://extensions`, then refresh website tabs. Your settings are preserved.
-
-Settings stay on your device. No analytics; no access to mailbox, calendar or password contents.
+Settings stay on your device. No analytics.
 
 Independent project, not affiliated with Google. Licensed under [GPL-3.0](LICENSE).

@@ -252,6 +252,8 @@ chrome.runtime.onMessage.addListener((message,sender,respond) => {
 });
 chrome.commands.onCommand.addListener(async name => {
   if (name !== 'toggle-dock') return;
+  const config=await settings();
+  if(!config.enabled){await chrome.action.openPopup();return;}
   const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
   if (tab?.id) { try { await chrome.tabs.sendMessage(tab.id,{type:'toggle-dock'}); } catch { await chrome.action.openPopup(); } }
 });

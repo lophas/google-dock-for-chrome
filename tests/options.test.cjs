@@ -30,3 +30,8 @@ test('Options keeps numeric fields numeric while theme and edge remain strings',
   const s=await setup();await s.select('size','54');await s.select('triggerHeight','32');await s.select('transparency','90');await s.select('theme','dark');await s.select('triggerEdge','top');
   assert.equal(s.stored().size,54);assert.equal(s.stored().triggerHeight,32);assert.equal(s.stored().transparency,90);assert.equal(s.stored().theme,'dark');assert.equal(s.stored().triggerEdge,'top');
 });
+test('Disabled selection persists across reopening and Top re-enables the dock',async()=>{
+  const s=await setup();await s.select('triggerEdge','disabled');assert.equal(s.stored().triggerEdge,'disabled');assert.equal(s.stored().enabled,false);
+  const reopened=await setup(s.stored());assert.equal(reopened.nodes.get('triggerEdge').value,'disabled');
+  await reopened.select('triggerEdge','top');assert.equal(reopened.stored().triggerEdge,'top');assert.equal(reopened.stored().enabled,true);
+});

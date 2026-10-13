@@ -28,7 +28,9 @@ globalThis.GDock = (() => {
     const s = {...defaults,...raw};
     for (const k of ['enabled','autoHide','reuseTabs']) s[k] = typeof s[k] === 'boolean' ? s[k] : defaults[k];
     s.size = [38,46,54].includes(s.size) ? s.size : 46;
-    s.triggerEdge = ['bottom','top'].includes(s.triggerEdge) ? s.triggerEdge : 'bottom';
+    s.triggerEdge = ['bottom','top','disabled'].includes(s.triggerEdge) ? s.triggerEdge : 'bottom';
+    if(!s.enabled)s.triggerEdge='disabled';
+    s.enabled=s.triggerEdge!=='disabled';
     s.triggerHeight = [4,16,24,32].includes(s.triggerHeight) ? s.triggerHeight : 24;
     s.transparency = Number.isFinite(s.transparency) && s.transparency>=0 && s.transparency<=100 ? Math.round(s.transparency) : defaults.transparency;
     s.theme = ['auto','light','dark'].includes(s.theme) ? s.theme : 'auto';
