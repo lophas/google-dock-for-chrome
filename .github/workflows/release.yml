@@ -24,7 +24,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           VERSION=$(node -p "require('./manifest.json').version")
-          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$VERSION" != "1.1.0" ]; then exit 0; fi
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$VERSION" != "1.1.1" ]; then exit 0; fi
           TAG="v$VERSION"
           if gh release view "$TAG" >/dev/null 2>&1; then exit 0; fi
           PACKAGE="google-dock-for-chrome-$VERSION"
@@ -33,9 +33,8 @@ jobs:
           cp -R icons "$PACKAGE/"
           zip -qr "$PACKAGE.zip" "$PACKAGE"
           cat > release-notes.md <<'NOTES'
-          - Choose the top or bottom page edge to reveal and position the dock.
-          - Running-app dots now appear in both the dock app menu and toolbar launcher.
-          - Shared state updates indicators when tabs open, close or become active.
+          - Fix Dock edge selection resetting to Bottom: Top now saves correctly and activates the top-edge dock.
+          - Add Options-to-storage regression coverage for the dropdown, including reopening Settings.
 
           **Install:** Download the attached ZIP, extract it, then select the extracted folder using **Load unpacked** at `chrome://extensions` with **Developer mode** enabled. Refresh existing website tabs.
 

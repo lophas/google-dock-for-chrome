@@ -48,7 +48,7 @@ function controls(){
 (async()=>{
   config=GDock.normalize((await chrome.storage.local.get('settings')).settings);rebuildOrder();controls();render();accountLabel();
   for(const id of fields)document.getElementById(id).onchange=e=>{
-    const value=e.target.type==='checkbox'?e.target.checked:['size','triggerHeight','triggerEdge','transparency'].includes(id)?Number(e.target.value):e.target.value;
+    const value=e.target.type==='checkbox'?e.target.checked:['size','triggerHeight','transparency'].includes(id)?Number(e.target.value):e.target.value;
     config[id]=value;save({[id]:value});
   };
   document.getElementById('reset').onclick=()=>save(GDock.normalize());
