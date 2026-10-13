@@ -19,7 +19,7 @@ async function setup(){
     blur(){}
     attachShadow(){return root;}
     querySelector(s){return nodes[s];}
-    querySelectorAll(selector){return this===nodes['.context-menu']?this.children.filter(b=>b.tagName==='button'):nodes['.strip'].children.filter(b=>b.className==='app');}
+    querySelectorAll(selector){if(this===nodes['.context-menu'])return this.children.filter(b=>b.tagName==='button');const dock=nodes['.strip'].children.filter(b=>b.className==='app');return selector==='.app,.tile'?[...dock,...nodes['.grid'].children.filter(b=>b.className==='tile')]:dock;}
     getBoundingClientRect(){return {left:200,right:800,top:690,bottom:790};}
   }
   const nodes=Object.fromEntries(['.dock','.launcher','.search','.strip','.grid','.more','.settings','.status','.context-menu'].map(s=>[s,new Element()]));
@@ -133,4 +133,24 @@ test('app-menu launch closes its local and shared UI, including middle click',as
     assert.equal(patch.launcherOpen,false);assert.equal(patch.search,'');
     await new Promise(setImmediate);assert.ok(s.requests.some(r=>r.type==='launch'&&r.appId==='photos'));
   }
+});
+
+test('top edge reveals at the top and preserves the corridor into the dock',async()=>{
+  const s=await setup();s.settings({triggerEdge:'top'});
+  s.nodes['.dock'].getBoundingClientRect=()=>({left:200,right:800,top:10,bottom:100});
+  s.move(500,799);s.tick(100);assert.equal(s.shell.dataset.visible,'false');
+  s.move(500,10);s.tick(100);assert.equal(s.shell.dataset.visible,'true');assert.equal(s.shell.dataset.edge,'top');
+  s.move(500,0);s.tick(380);assert.equal(s.shell.dataset.visible,'true');
+  s.move(500,118);s.tick(380);assert.equal(s.shell.dataset.visible,'true');
+  s.move(500,300);s.tick(380);assert.equal(s.shell.dataset.visible,'false');
+});
+test('app-menu dots update when app tabs open and close, including filtered results',async()=>{
+  const s=await setup();
+  assert.equal(s.nodes['.grid'].children.find(b=>b.dataset.appId==='gmail').dataset.running,'true');
+  s.setRunning(['photos']);s.stateChanged();await new Promise(setImmediate);
+  assert.equal(s.nodes['.grid'].children.find(b=>b.dataset.appId==='gmail').dataset.running,'false');
+  assert.equal(s.nodes['.grid'].children.find(b=>b.dataset.appId==='photos').dataset.running,'true');
+  s.nodes['.search'].value='photos';s.nodes['.search'].dispatch('input');
+  assert.equal(s.nodes['.grid'].children[0].dataset.running,'true');
+  s.setRunning([]);s.stateChanged();await new Promise(setImmediate);assert.equal(s.nodes['.grid'].children[0].dataset.running,'false');
 });

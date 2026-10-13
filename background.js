@@ -190,6 +190,7 @@ function stateForWindow(windowId) {
     ui:dockState.uiByWindow[windowId] || {visible:false,launcherOpen:false,search:''}};
 }
 async function broadcastState(tabs) {
+  try{const window=await chrome.windows.getLastFocused();await chrome.runtime.sendMessage({type:'dock-state',state:stateForWindow(window.id)});}catch{}
   await Promise.all(tabs.filter(t=>t.active).map(async tab=>{
     try {await chrome.tabs.sendMessage(tab.id,{type:'dock-state',state:stateForWindow(tab.windowId)});}catch{}
   }));
@@ -229,6 +230,7 @@ function scheduleStateRefresh(){
   clearTimeout(stateTimer);stateTimer=setTimeout(()=>{stateTimer=undefined;refreshDockState().catch(()=>{});},40);
 }
 async function handle(message,sender) {
+  if(message.type==='dock-state')return {ok:true};
   if (message.type === 'launch') return launch(message,sender);
   if (message.type === 'close') return closeApp(message,sender);
   if (message.type === 'pin' || message.type === 'settings-patch' || message.type === 'reorder' || message.type==='remember-account' || message.type==='reset-account') return changeSettings(message);

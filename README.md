@@ -13,7 +13,7 @@ Your Google apps in a floating, macOS-style dock. Reveal it at the bottom of a w
 
 ## Use the dock
 
-Move the pointer to the **bottom center** of a webpage and pause briefly to reveal the dock. It hides when you move away.
+Move the pointer to the **bottom center** of a webpage (or **top center** when the top edge is selected) and pause briefly to reveal the dock. It hides when you move away.
 
 | Action | What it does |
 | --- | --- |
@@ -27,7 +27,7 @@ Move the pointer to the **bottom center** of a webpage and pause briefly to reve
 | **Alt+Shift+G** | Show or hide the dock |
 | **Escape** | Dismiss the context menu or dock |
 
-A dot marks a running app; a blue highlight marks the active app. Unpinned running apps appear to the right of the favorites and disappear when their last tab closes.
+A dot marks a running app in both the dock and app menu; a blue highlight marks the active app. Unpinned running apps appear to the right of the favorites and disappear when their last tab closes.
 
 App tabs are collected in a **Google Dock** Chrome tab group, in the same order as the dock icons. The dock and app menu share their state across tabs. Opening an app closes the app menu.
 
@@ -38,6 +38,8 @@ Gmail, Calendar, Drive, Docs, Sheets, Slides, Meet, Chat, Keep, Photos, Maps, Yo
 ## Customize
 
 Open **Settings** from the app menu or toolbar launcher to choose favorites, icon size, theme, dock background transparency, autohide and tab reuse.
+
+Choose **Dock edge → Top / Bottom** in Settings. The dock and app menu follow the selected edge; bottom remains the default.
 
 **Using the macOS Dock?** Increase **Activation zone height** to reveal Google Dock before reaching the screen’s bottom edge. The default is **24 px**.
 

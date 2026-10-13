@@ -24,7 +24,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           VERSION=$(node -p "require('./manifest.json').version")
-          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$VERSION" != "1.0.6" ]; then exit 0; fi
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$VERSION" != "1.1.0" ]; then exit 0; fi
           TAG="v$VERSION"
           if gh release view "$TAG" >/dev/null 2>&1; then exit 0; fi
           PACKAGE="google-dock-for-chrome-$VERSION"
@@ -33,12 +33,9 @@ jobs:
           cp -R icons "$PACKAGE/"
           zip -qr "$PACKAGE.zip" "$PACKAGE"
           cat > release-notes.md <<'NOTES'
-          Updated usage guide with dedicated sections for per-app Google accounts and backup/restore.
-
-          - Adjustable background transparency with subtle 4 px blur at every setting.
-          - Remember different signed-in Google accounts per app, including Photos.
-          - Bring remembered-account app tabs into the current window.
-          - Back up and restore pinned apps and their order.
+          - Choose the top or bottom page edge to reveal and position the dock.
+          - Running-app dots now appear in both the dock app menu and toolbar launcher.
+          - Shared state updates indicators when tabs open, close or become active.
 
           **Install:** Download the attached ZIP, extract it, then select the extracted folder using **Load unpacked** at `chrome://extensions` with **Developer mode** enabled. Refresh existing website tabs.
 

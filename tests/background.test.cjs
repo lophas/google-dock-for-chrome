@@ -236,3 +236,8 @@ test('failed window transfer restores the original group and never creates a dup
   const result=await s.send({type:'launch',appId:'photos'},1);
   assert.match(result.error,/Could not bring/);assert.equal(s.tabs[0].groupId,7);assert.equal(s.calls.some(c=>c[0]==='create'),false);
 });
+test('dock edge is saved centrally and backup restore leaves it unchanged',async()=>{
+  const s=setup();await s.send({type:'settings-patch',patch:{triggerEdge:'top'}});assert.equal((await s.send({type:'state-get'})).settings.triggerEdge,'top');
+  await s.send({type:'settings-patch',patch:{dockApps:['photos']}});assert.equal(s.stored().triggerEdge,'top');
+  assert.equal(s.ctx.GDock.normalize({triggerEdge:'unknown'}).triggerEdge,'bottom');
+});

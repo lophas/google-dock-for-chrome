@@ -6,3 +6,5 @@
 input[type=range]{flex:1;min-width:70px;accent-color:#4285f4}output{min-width:4ch;text-align:right}
 
 #account-status{overflow-wrap:anywhere;font-size:13px}
+
+.popup .grid button{position:relative;padding-bottom:20px}.popup .grid button[data-running=true]:after{content:'';position:absolute;bottom:4px;width:5px;height:5px;border-radius:50%;background:var(--text)}.popup .grid button[data-active=true]:after{background:#4285f4}

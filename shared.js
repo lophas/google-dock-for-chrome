@@ -23,11 +23,12 @@ globalThis.GDock = (() => {
     ['one','Google One','https://one.google.com/','one.google.com','/',svg('<path fill="#4285f4" d="M13 15L26 3h7v42H22V17l-4 5Z"/><path fill="#ea4335" d="M26 3h7v10H22z"/><path fill="#34a853" d="M22 32h11v13H22z"/><path fill="#fbbc04" d="M22 23h11v9H22z"/>')]
 
   ].map(([id,name,url,host,path,icon]) => ({id,name,url,host,path,icon}));
-  const defaults = {enabled:true, autoHide:true, size:46, triggerHeight:24, transparency:12, theme:'auto', reuseTabs:true, accountUrls:{}, dockApps:['gmail','calendar','drive','docs','sheets','meet','keep','youtube','gemini']};
+  const defaults = {enabled:true, autoHide:true, size:46, triggerHeight:24, triggerEdge:'bottom', transparency:12, theme:'auto', reuseTabs:true, accountUrls:{}, dockApps:['gmail','calendar','drive','docs','sheets','meet','keep','youtube','gemini']};
   function normalize(raw = {}) {
     const s = {...defaults,...raw};
     for (const k of ['enabled','autoHide','reuseTabs']) s[k] = typeof s[k] === 'boolean' ? s[k] : defaults[k];
     s.size = [38,46,54].includes(s.size) ? s.size : 46;
+    s.triggerEdge = ['bottom','top'].includes(s.triggerEdge) ? s.triggerEdge : 'bottom';
     s.triggerHeight = [4,16,24,32].includes(s.triggerHeight) ? s.triggerHeight : 24;
     s.transparency = Number.isFinite(s.transparency) && s.transparency>=0 && s.transparency<=100 ? Math.round(s.transparency) : defaults.transparency;
     s.theme = ['auto','light','dark'].includes(s.theme) ? s.theme : 'auto';

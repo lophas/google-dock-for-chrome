@@ -41,6 +41,7 @@
       });
       b.addEventListener('dragend',finishDrag);
     }
+    b.dataset.running=String(running.includes(app.id));
     return b;
   }
   const strip=shell.querySelector('.strip');
@@ -72,6 +73,7 @@
     const filtered=GDock.apps.filter(a=>a.name.toLowerCase().includes(search.value.trim().toLowerCase()));
     filtered.forEach(a=>grid.append(button(a,true)));
     if(!filtered.length){const p=document.createElement('div');p.className='empty';p.textContent='No apps found';grid.append(p);}
+    markRunning();
   }
   function closeMenu(restoreFocus=true) {
     menu.hidden=true;
@@ -97,7 +99,7 @@
     const x=event.clientX || rect.left, y=event.clientY || rect.top;
     const width=menu.offsetWidth || 200, height=menu.offsetHeight || 125;
     menu.style.left=Math.max(8,Math.min(x,innerWidth-width-8))+'px';
-    menu.style.top=Math.max(8,Math.min(y-height,innerHeight-height-8))+'px';
+    menu.style.top=Math.max(8,Math.min(config.triggerEdge==='top'?y:y-height,innerHeight-height-8))+'px';
     pin.focus();
   }
   menu.addEventListener('keydown',e=>{
@@ -119,13 +121,14 @@
     markRunning();
   }
   function apply(raw,initial=false) {
-    config=GDock.normalize(raw); shell.dataset.theme=config.theme; shell.style.setProperty('--size',config.size+'px');shell.style.setProperty('--dock-opacity',String(1-config.transparency/100));
+    config=GDock.normalize(raw); shell.dataset.theme=config.theme;shell.dataset.edge=config.triggerEdge; shell.style.setProperty('--size',config.size+'px');shell.style.setProperty('--dock-opacity',String(1-config.transparency/100));
     renderDock(); renderGrid();
     setVisible(!config.autoHide || (!initial && visible));
   }
   function markRunning(){
-    shell.querySelectorAll('.app').forEach(b=>{
-      b.dataset.running=String(running.includes(b.dataset.appId));
+    shell.querySelectorAll('.app,.tile').forEach(b=>{
+      const isRunning=running.includes(b.dataset.appId);b.dataset.running=String(isRunning);
+      const app=GDock.apps.find(a=>a.id===b.dataset.appId);b.setAttribute('aria-label',app.name+(isRunning?' (open)':''));
       const active=b.dataset.appId===activeId;b.dataset.active=String(active);
       if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
     });
@@ -139,7 +142,7 @@
       const ids=state.ids || [];
       const runningChanged=ids.join(',')!==running.join(',');
       config=next;running=ids;activeId=state.activeId || null;
-      shell.dataset.theme=config.theme;shell.style.setProperty('--size',config.size+'px');shell.style.setProperty('--dock-opacity',String(1-config.transparency/100));
+      shell.dataset.theme=config.theme;shell.dataset.edge=config.triggerEdge;shell.style.setProperty('--size',config.size+'px');shell.style.setProperty('--dock-opacity',String(1-config.transparency/100));
       if(settingsChanged || runningChanged || !strip.children.length)renderDock();else markRunning();
       const ui=state.ui || {};
       if(typeof ui.search==='string' && search.value!==ui.search){search.value=ui.search;renderGrid();}
@@ -150,7 +153,7 @@
   }
   async function refreshRunning(){try{applyState(await request({type:'state-get'}));}catch{}}
   function safeArea(x,y) {
-    const r=dock.getBoundingClientRect(); return x>=r.left-22 && x<=r.right+22 && y>=r.top-22;
+    const r=dock.getBoundingClientRect(); return x>=r.left-22 && x<=r.right+22 && (config.triggerEdge==='top'?y<=r.bottom+22:y>=r.top-22);
   }
   document.addEventListener('pointermove',e=>{
     if(e.pointerType==='touch')return;
@@ -158,7 +161,7 @@
     if(!config.enabled||document.fullscreenElement)return;
     if(visible){if(safeArea(lastX,lastY)||!launcher.hidden||!menu.hidden||draggedApp){cancelHide();}else hideLater();return;}
     const r=dock.getBoundingClientRect();
-    const edge=lastY>=innerHeight-config.triggerHeight && lastX>=r.left-22 && lastX<=r.right+22;
+    const edge=(config.triggerEdge==='top'?lastY<=config.triggerHeight:lastY>=innerHeight-config.triggerHeight) && lastX>=r.left-22 && lastX<=r.right+22;
     if(edge&&!dwell)dwell=setTimeout(()=>{dwell=undefined;setVisible(true);},100);
     if(!edge){clearTimeout(dwell);dwell=undefined;}
   },{passive:true});
