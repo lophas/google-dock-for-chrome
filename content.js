@@ -3,7 +3,7 @@
   const host = document.createElement('div'); host.id = 'google-dock-for-chrome';
   const root = host.attachShadow({mode:'open'});
   const style = document.createElement('style');
-  style.textContent = await (await fetch(chrome.runtime.getURL('dock.css'))).text(); root.append(style);
+  style.textContent = GDockStyle; root.append(style);
   const shell = document.createElement('div'); shell.className='shell'; shell.dataset.visible='false';
   shell.innerHTML = '<section class="launcher" hidden aria-label="Google apps"><input class="search" placeholder="Search Google apps" aria-label="Search Google apps"><div class="grid"></div><div class="footer"><span>Google Dock</span><button class="settings">Settings</button></div></section><nav class="dock" aria-label="Google Dock"><div class="strip"></div><span class="divider"></span><button class="utility more" aria-label="All Google apps" title="All Google apps">⠿</button></nav><div class="context-menu" role="menu" aria-label="App options" hidden></div><div class="status" role="status" hidden></div>';
   root.append(shell); document.documentElement.append(host);

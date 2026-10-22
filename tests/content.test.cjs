@@ -25,14 +25,15 @@ async function setup(){
   const nodes=Object.fromEntries(['.dock','.launcher','.search','.strip','.grid','.more','.settings','.status','.context-menu'].map(s=>[s,new Element()]));
   nodes['.launcher'].hidden=true;nodes['.context-menu'].hidden=true;
   const root=new Element(),document=new Element(),window=new Element();document.documentElement=new Element();document.createElement=tag=>{const el=new Element();el.tagName=tag;return el;};document.getElementById=()=>null;
-  const chrome={runtime:{getURL:n=>n,sendMessage:async message=>{requests.push(message);if(message.type==='ui-patch'){ui={...ui,...message.patch};return {ok:true};}if(message.type==='reorder'){const config=context.GDock.normalize(stored);const ids=config.dockApps.filter(id=>id!==message.appId);ids.splice(message.beforeId==null?ids.length:ids.indexOf(message.beforeId),0,message.appId);config.dockApps=ids;stored=config;return {settings:stored};}if(message.type==='pin'){const config=context.GDock.normalize(stored);config.dockApps=config.dockApps.filter(id=>id!==message.appId);if(message.keep)config.dockApps.push(message.appId);stored=config;return {settings:stored};}return {revision:++revision,settings:stored,ids:running,activeId,ui};},onMessage:{addListener:fn=>messageListener=fn}},storage:{local:{get:async()=>({})},onChanged:{addListener:fn=>storageListener=fn}}};
-  const context=vm.createContext({document,window,chrome,innerHeight:800,innerWidth:1000,URL,fetch:async()=>({text:async()=>''}),setTimeout:(fn,delay)=>{const id=++next;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id),setInterval:()=>{}});
+  const chrome={runtime:{getURL:()=>{throw new Error('Extension URLs are unavailable');},sendMessage:async message=>{requests.push(message);if(message.type==='ui-patch'){ui={...ui,...message.patch};return {ok:true};}if(message.type==='reorder'){const config=context.GDock.normalize(stored);const ids=config.dockApps.filter(id=>id!==message.appId);ids.splice(message.beforeId==null?ids.length:ids.indexOf(message.beforeId),0,message.appId);config.dockApps=ids;stored=config;return {settings:stored};}if(message.type==='pin'){const config=context.GDock.normalize(stored);config.dockApps=config.dockApps.filter(id=>id!==message.appId);if(message.keep)config.dockApps.push(message.appId);stored=config;return {settings:stored};}return {revision:++revision,settings:stored,ids:running,activeId,ui};},onMessage:{addListener:fn=>messageListener=fn}},storage:{local:{get:async()=>({})},onChanged:{addListener:fn=>storageListener=fn}}};
+  const context=vm.createContext({document,window,chrome,innerHeight:800,innerWidth:1000,URL,fetch:()=>{throw new Error('Page blocks resource requests');},setTimeout:(fn,delay)=>{const id=++next;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id),setInterval:()=>{}});
   const run=f=>vm.runInContext(fs.readFileSync(path.join(__dirname,'..',f),'utf8'),context);
-  run('shared.js');await run('content.js');
+  const manifest=JSON.parse(fs.readFileSync(path.join(__dirname,'..','manifest.json'),'utf8'));
+  for(const file of manifest.content_scripts[0].js)await run(file);
   const shell=root.children[1];
   const move=(x,y)=>document.dispatch('pointermove',{pointerType:'mouse',clientX:x,clientY:y});
   const tick=delay=>{for(const [id,t]of [...timers])if(t.delay===delay){timers.delete(id);t.fn();}};
-  return {setActive:id=>activeId=id,stateChanged:()=>messageListener({type:'dock-state-changed'}),requests,setRunning:ids=>running=ids,refresh:async()=>{messageListener({type:'dock-state-changed'});await new Promise(setImmediate);},move,tick,timers,shell,nodes,document,window,toggle:()=>messageListener({type:'toggle-dock'}),settings:s=>{stored=s;messageListener({type:'dock-state',state:{revision:++revision,settings:stored,ids:running,activeId,ui}});}};
+  return {setActive:id=>activeId=id,stateChanged:()=>messageListener({type:'dock-state-changed'}),requests,root,setRunning:ids=>running=ids,refresh:async()=>{messageListener({type:'dock-state-changed'});await new Promise(setImmediate);},move,tick,timers,shell,nodes,document,window,toggle:()=>messageListener({type:'toggle-dock'}),settings:s=>{stored=s;messageListener({type:'dock-state',state:{revision:++revision,settings:stored,ids:running,activeId,ui}});}};
 }
 test('edge dwell cancels on departure and can reveal repeatedly',async()=>{
   const s=await setup();s.move(500,799);assert.equal(s.shell.dataset.visible,'false');s.move(500,500);s.tick(100);assert.equal(s.shell.dataset.visible,'false');
@@ -159,4 +160,11 @@ test('Disabled mode hides the webpage dock even with autohide off and ignores bo
   for(const y of [0,799]){s.move(500,y);s.tick(100);assert.equal(s.shell.dataset.visible,'false');}
   s.toggle();assert.equal(s.shell.dataset.visible,'false');assert.equal(s.nodes['.launcher'].hidden,true);
   s.settings({triggerEdge:'top',enabled:true,autoHide:false});assert.equal(s.shell.dataset.visible,'true');
+});
+
+test('dock initializes with its complete Shadow DOM style when resource requests are blocked',async()=>{
+  const s=await setup();
+  assert.equal(s.root.children[0].textContent,fs.readFileSync(path.join(__dirname,'..','dock.css'),'utf8'));
+  assert.equal(s.document.documentElement.children.length,1);
+  s.move(500,799);s.tick(100);assert.equal(s.shell.dataset.visible,'true');
 });

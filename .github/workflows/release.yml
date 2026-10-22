@@ -17,6 +17,7 @@ jobs:
       - name: Validate and test
         run: |
           for file in *.js; do node --check "$file"; done
+          node scripts/build-style.cjs --check
           node --test tests/*.test.cjs
       - name: Package and publish
         env:
@@ -24,21 +25,21 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           VERSION=$(node -p "require('./manifest.json').version")
-          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$VERSION" != "1.2.0" ]; then exit 0; fi
           TAG="v$VERSION"
           if gh release view "$TAG" >/dev/null 2>&1; then exit 0; fi
           PACKAGE="google-dock-for-chrome-$VERSION"
           mkdir "$PACKAGE"
-          cp manifest.json background.js shared.js backup.js content.js dock.css popup.html popup.js options.html options.js pages.css README.md LICENSE "$PACKAGE/"
+          cp manifest.json background.js shared.js backup.js dock-style.js content.js dock.css popup.html popup.js options.html options.js pages.css README.md PRIVACY.md LICENSE "$PACKAGE/"
           cp -R icons "$PACKAGE/"
           zip -qr "$PACKAGE.zip" "$PACKAGE"
+          (cd "$PACKAGE" && zip -qr "../$PACKAGE-webstore.zip" .)
           cat > release-notes.md <<'NOTES'
-          - New **Disabled — toolbar only** option alongside Top and Bottom dock modes.
-          - In toolbar-only mode, the keyboard shortcut opens the toolbar app launcher.
-          - Refreshed feature overview, installation guide and quick start.
+          - Fix recurring blocked dock.css requests by bundling dock styles with the content scripts.
+          - Dock startup no longer fetches extension resources from webpages.
+          - Includes a separate Web Store ZIP with manifest.json at its root.
 
           **Install:** Download the attached ZIP, extract it, then select the extracted folder using **Load unpacked** at `chrome://extensions` with **Developer mode** enabled. Refresh existing website tabs.
 
           **Update:** Replace your extension files, reload the extension and refresh website tabs. Existing settings are preserved.
           NOTES
-          gh release create "$TAG" "$PACKAGE.zip" --target "$GITHUB_SHA" --title "Google Dock for Chrome $VERSION" --notes-file release-notes.md --latest
+          gh release create "$TAG" "$PACKAGE.zip" "$PACKAGE-webstore.zip" --target "$GITHUB_SHA" --title "Google Dock for Chrome $VERSION" --notes-file release-notes.md --latest
