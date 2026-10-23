@@ -34,9 +34,10 @@ jobs:
           zip -qr "$PACKAGE.zip" "$PACKAGE"
           (cd "$PACKAGE" && zip -qr "../$PACKAGE-webstore.zip" .)
           cat > release-notes.md <<'NOTES'
-          - Fix recurring blocked dock.css requests by bundling dock styles with the content scripts.
-          - Dock startup no longer fetches extension resources from webpages.
-          - Includes a separate Web Store ZIP with manifest.json at its root.
+          - Expand the app menu to 32 services, including Tasks, Translate, Forms, Sites, Vids, Gemini Notebook, News, YouTube Music, Earth, Finance, Scholar, Books, Travel and Apps Script.
+          - Recognize Tasks separately from Calendar and Forms/Vids separately from other document apps.
+          - Support both Notebook domains and searching for NotebookLM.
+          - Preserve existing pinned apps and preferences.
 
           **Install:** Download the attached ZIP, extract it, then select the extracted folder using **Load unpacked** at `chrome://extensions` with **Developer mode** enabled. Refresh existing website tabs.
 

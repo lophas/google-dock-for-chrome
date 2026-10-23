@@ -43,6 +43,17 @@ function setup(tabs=[],settings={}) {
   const send=(message,windowId=1)=>new Promise(resolve=>listener(message,{tab:{windowId}},resolve));
   return {listeners,moveCalls,session,tabs,send,calls,ctx,groupCalls,groups,chrome,stored:()=>stored};
 }
+test('expanded apps reuse and close their tabs without touching Calendar',async()=>{
+  const entries=[['tasks','https://calendar.google.com/calendar/u/0/r/tasks'],['translate','https://translate.google.com/?sl=en&tl=hu'],['forms','https://docs.google.com/forms/d/test/edit'],['sites','https://sites.google.com/d/test/edit'],['vids','https://docs.google.com/videos/d/test/edit'],['notebooklm','https://notebooklm.google.com/notebook/test'],['news','https://news.google.com/home'],['youtube-music','https://music.youtube.com/watch?v=test'],['earth','https://earth.google.com/web/'],['finance','https://www.google.com/finance/quote/GOOG:NASDAQ'],['scholar','https://scholar.google.com/scholar?q=test'],['books','https://books.google.com/books?id=test'],['travel','https://www.google.com/travel/flights'],['apps-script','https://script.google.com/home/projects/test/edit']];
+  for(const [appId,url] of entries){
+    const s=setup([{id:10,url:'https://calendar.google.com/calendar/u/0/r/week'},{id:20,url}]);
+    assert.equal((await s.send({type:'launch',appId})).ok,true,appId);
+    assert.ok(s.calls.some(c=>c[0]==='activate'&&c[1]===20),appId);
+    assert.equal(s.calls.some(c=>c[0]==='create'),false,appId);
+    await s.send({type:'close',appId});
+    assert.equal(s.tabs.some(t=>t.id===20),false,appId);assert.equal(s.tabs.some(t=>t.id===10),true,appId);
+  }
+});
 test('reuse prefers current window and never creates duplicate',async()=>{
   const s=setup([{id:20,windowId:2,url:'https://mail.google.com/mail/u/1/',lastAccessed:999},{id:10,windowId:1,url:'https://mail.google.com/mail/u/0/',lastAccessed:1}]);
   assert.equal((await s.send({type:'launch',appId:'gmail'})).ok,true);

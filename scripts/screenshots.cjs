@@ -22,6 +22,12 @@ const demo=`<!doctype html><html lang="en"><meta charset="utf-8"><title>Demo wor
     await page.locator('.shell[data-visible=true] .dock').waitFor({state:'visible'});
     await page.screenshot({path:path.join(output,'dock-bottom.png')});
     await page.locator('.more').click();await page.locator('.launcher').waitFor({state:'visible'});
+    if(await page.locator('.grid .tile').count()!==32)throw new Error('Expected all 32 apps');
+    for(const query of ['Tasks','Translate','NotebookLM']){
+      await page.locator('.search').fill(query);
+      if(await page.locator('.grid .tile').count()!==1)throw new Error('Search failed: '+query);
+    }
+    await page.locator('.search').fill('');
     await page.screenshot({path:path.join(output,'app-menu.png')});
     await page.locator('.more').click();
     await configure({triggerEdge:'top',theme:'light'});

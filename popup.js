@@ -22,7 +22,7 @@ async function launch(app,flags={}){
 }
 function render(){
   grid.replaceChildren();
-  for(const app of GDock.apps.filter(a=>a.name.toLowerCase().includes(search.value.toLowerCase()))){
+  for(const app of GDock.apps.filter(a=>GDock.searchMatches(a,search.value))){
     const b=document.createElement('button');b.dataset.appId=app.id;b.innerHTML=app.icon;
     const name=document.createElement('span');name.textContent=app.name;b.append(name);
     b.onclick=e=>launch(app,{newTab:e.ctrlKey||e.metaKey||e.shiftKey});

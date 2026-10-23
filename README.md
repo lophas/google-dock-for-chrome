@@ -74,7 +74,18 @@ Customize the keyboard shortcut at `chrome://extensions/shortcuts`.
 
 ## Apps & shortcuts
 
-Gmail, Calendar, Drive, Docs, Sheets, Slides, Meet, Chat, Keep, Photos, Maps, YouTube and Gemini, plus Payments, Password Manager, Google Account, Contacts and Google One.
+Choose from 32 apps and shortcuts in the searchable app menu. Right-click any app to keep it in your dock.
+
+| Use | Available apps |
+| --- | --- |
+| Work & organization | Gmail, Calendar, Tasks, Drive, Docs, Sheets, Slides, Forms, Sites, Vids, Meet, Chat, Keep, Contacts |
+| AI & research | Gemini, Gemini Notebook (also searchable as NotebookLM), Scholar |
+| Everyday browsing | Translate, Photos, Maps, Earth, News, Books, Travel, Finance |
+| Media | YouTube, YouTube Music |
+| Account & tools | Google Account, Google One, Payments, Passwords, Apps Script |
+
+Tasks and Calendar have separate tab indicators even when both use the Calendar website. Some services require an eligible Google account or subscription.
+
 
 ## Accounts & backups
 

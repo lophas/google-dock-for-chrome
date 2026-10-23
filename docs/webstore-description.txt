@@ -1,0 +1,19 @@
+Keep your Google apps within easy reach with a customizable dock and toolbar launcher.
+
+Open an app or switch to its existing tab. Pin your favorites, drag icons into your preferred order, and see which apps are open or active. App tabs stay together in a dedicated tab group.
+
+Choose a top or bottom dock with optional auto-hide, or use the toolbar launcher on its own. Search the app menu to find additional services and pin only the ones you use.
+
+Customize icon size, theme, transparency, and the activation area. Remember a preferred signed-in account for individual apps, and back up or restore your pinned app selection.
+
+Tab URLs and optional account URLs are processed locally to recognize apps and select the correct account. The extension has no analytics or developer-operated backend.
+
+Quick start:
+1. Pin the extension to your Chrome toolbar.
+2. Open a webpage and move your pointer to the selected screen edge.
+3. Right-click an app and choose Keep in Dock.
+4. Open Settings for appearance, account, and backup options.
+
+Use the toolbar launcher on pages where Chrome does not allow the floating dock, including browser settings and the Chrome Web Store.
+
+Independent project, not affiliated with or endorsed by Google.

@@ -70,7 +70,7 @@
   });
   function renderGrid() {
     const grid=shell.querySelector('.grid'); grid.replaceChildren();
-    const filtered=GDock.apps.filter(a=>a.name.toLowerCase().includes(search.value.trim().toLowerCase()));
+    const filtered=GDock.apps.filter(a=>GDock.searchMatches(a,search.value));
     filtered.forEach(a=>grid.append(button(a,true)));
     if(!filtered.length){const p=document.createElement('div');p.className='empty';p.textContent='No apps found';grid.append(p);}
     markRunning();
