@@ -1,4 +1,5 @@
 importScripts('shared.js');
+importScripts('toolbar.js');
 const {apps, normalize, matches} = GDock;
 async function settings() { return normalize((await chrome.storage.local.get('settings')).settings); }
 
@@ -187,7 +188,8 @@ let dockState, initializingState, dockTabs=[], stateQueue=Promise.resolve(), sta
 function stateForWindow(windowId) {
   return {revision:dockState.revision,settings:dockState.settings,ids:dockState.ids,
     activeId:dockState.activeByWindow[windowId] || null,
-    ui:dockState.uiByWindow[windowId] || {visible:false,launcherOpen:false,search:''}};
+    ui:dockState.uiByWindow[windowId] || {visible:false,launcherOpen:false,search:''},
+    pageWarning:GDockToolbar.message(dockTabs.find(t=>t.active&&t.windowId===windowId))};
 }
 async function broadcastState(tabs) {
   try{const window=await chrome.windows.getLastFocused();await chrome.runtime.sendMessage({type:'dock-state',state:stateForWindow(window.id)});}catch{}
@@ -218,6 +220,7 @@ function refreshDockState(uiPatch) {
     for(const id of Object.keys(uiByWindow))if(!liveWindows.has(id))delete uiByWindow[id];
     dockState={revision:previous.revision+1,settings:config,ids,activeByWindow,uiByWindow};
     await chrome.storage.session.set({dockState});
+    await GDockToolbar.refresh(tabs,config);
     await broadcastState(tabs);return dockState;
   });
   stateQueue=task;return task;
@@ -278,3 +281,4 @@ chrome.tabs.onRemoved.addListener((tabId,info)=>{scheduleStateRefresh();if(!info
 chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes.settings)scheduleStateRefresh();});
 chrome.runtime.onStartup.addListener(()=>{syncAllGroups().catch(()=>{});scheduleStateRefresh();});
 chrome.runtime.onInstalled.addListener(()=>{syncAllGroups().catch(()=>{});scheduleStateRefresh();});
+scheduleStateRefresh();

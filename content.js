@@ -70,7 +70,7 @@
   });
   function renderGrid() {
     const grid=shell.querySelector('.grid'); grid.replaceChildren();
-    const filtered=GDock.apps.filter(a=>GDock.searchMatches(a,search.value));
+    const filtered=GDock.menuApps(config).filter(a=>GDock.searchMatches(a,search.value));
     filtered.forEach(a=>grid.append(button(a,true)));
     if(!filtered.length){const p=document.createElement('div');p.className='empty';p.textContent='No apps found';grid.append(p);}
     markRunning();
@@ -144,6 +144,7 @@
       config=next;running=ids;activeId=state.activeId || null;
       shell.dataset.theme=config.theme;shell.dataset.edge=config.triggerEdge;shell.style.setProperty('--size',config.size+'px');shell.style.setProperty('--dock-opacity',String(1-config.transparency/100));
       if(settingsChanged || runningChanged || !strip.children.length)renderDock();else markRunning();
+      if(settingsChanged)renderGrid();
       const ui=state.ui || {};
       if(typeof ui.search==='string' && search.value!==ui.search){search.value=ui.search;renderGrid();}
       setVisible(!config.autoHide || !!ui.visible,false);
@@ -177,7 +178,7 @@
   window.addEventListener('focus',()=>{refreshRunning();});
   document.addEventListener('fullscreenchange',()=>setVisible(!config.autoHide));
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&config.autoHide)setVisible(false,false);else if(!document.hidden)refreshRunning();});
-  chrome.runtime.onMessage.addListener(m=>{if(m.type==='toggle-dock')setVisible(!visible);else if(m.type==='dock-state')applyState(m.state);else if(m.type==='dock-state-changed')refreshRunning();});
+  chrome.runtime.onMessage.addListener((m,sender,respond)=>{if(m.type==='dock-ping'){respond({dockReady:true});return;}if(m.type==='toggle-dock')setVisible(!visible);else if(m.type==='dock-state')applyState(m.state);else if(m.type==='dock-state-changed')refreshRunning();});
   renderGrid();
   applyState(await request({type:'state-get'}));
 })().catch(()=>{ /* An old content script can lose its extension context after reload. */ });

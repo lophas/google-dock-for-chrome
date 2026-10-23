@@ -79,5 +79,9 @@ globalThis.GDock = (() => {
     const preferred=config.accountUrls[app.id];if(!preferred)return true;
     return (accountKey(tabUrl) ?? '0')===accountKey(preferred);
   }
-  return {apps,defaults,normalize,matches,accountKey,accountMatches,searchMatches};
+  function menuApps(config){
+    const pinned=config.dockApps.map(id=>apps.find(a=>a.id===id)).filter(Boolean);
+    return [...pinned,...apps.filter(a=>!config.dockApps.includes(a.id))];
+  }
+  return {apps,defaults,normalize,matches,accountKey,accountMatches,searchMatches,menuApps};
 })();

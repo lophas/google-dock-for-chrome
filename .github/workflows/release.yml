@@ -29,15 +29,15 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then exit 0; fi
           PACKAGE="google-dock-for-chrome-$VERSION"
           mkdir "$PACKAGE"
-          cp manifest.json background.js shared.js backup.js dock-style.js content.js dock.css popup.html popup.js options.html options.js pages.css README.md PRIVACY.md LICENSE "$PACKAGE/"
+          cp manifest.json background.js toolbar.js shared.js backup.js dock-style.js content.js dock.css popup.html popup.js options.html options.js pages.css README.md PRIVACY.md LICENSE "$PACKAGE/"
           cp -R icons "$PACKAGE/"
           zip -qr "$PACKAGE.zip" "$PACKAGE"
           (cd "$PACKAGE" && zip -qr "../$PACKAGE-webstore.zip" .)
           cat > release-notes.md <<'NOTES'
-          - Expand the app menu to 32 services, including Tasks, Translate, Forms, Sites, Vids, Gemini Notebook, News, YouTube Music, Earth, Finance, Scholar, Books, Travel and Apps Script.
-          - Recognize Tasks separately from Calendar and Forms/Vids separately from other document apps.
-          - Support both Notebook domains and searching for NotebookLM.
-          - Preserve existing pinned apps and preferences.
+          - Toolbar launcher shows only pinned apps in dock order and a Settings button.
+          - Pin and order changes update both app menus immediately.
+          - Yellow toolbar warning on pages where Chrome blocks the webpage dock, with an explanatory tooltip and launcher notice.
+          - Document restricted pages and toolbar-only behavior.
 
           **Install:** Download the attached ZIP, extract it, then select the extracted folder using **Load unpacked** at `chrome://extensions` with **Developer mode** enabled. Refresh existing website tabs.
 

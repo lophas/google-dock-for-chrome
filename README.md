@@ -2,7 +2,7 @@
 
 # Google Dock for Chrome
 
-Keep your Google apps one click away — in a floating dock or a searchable toolbar launcher.
+Keep your Google apps one click away — in a floating dock or a toolbar launcher for your pinned apps.
 
 ## Screenshots
 
@@ -35,7 +35,7 @@ To update, replace the extension files, click **Reload** and refresh your websit
 
 - Move the pointer to the **bottom center** of a webpage to reveal the dock.
 - Click an app to open it or return to its existing tab.
-- Click the **grid button** to search all apps.
+- Click the **grid button** to search all apps. The toolbar launcher shows **only your pinned apps**, in exactly the same order as the dock, plus **Settings**. Add other apps using the dock app menu or Settings.
 - Right-click an icon and choose **Keep in Dock** to add or remove a favorite.
 - Drag your pinned icons to put them in your preferred order.
 
@@ -95,7 +95,11 @@ Tasks and Calendar have separate tab indicators even when both use the Calendar 
 
 ## Availability
 
-Use the toolbar launcher on Chrome settings, browser error pages, the Chrome Web Store and the built-in PDF viewer. The webpage dock stays hidden during fullscreen.
+Chrome does not allow the floating dock or its edge trigger on internal pages (such as Settings and New Tab), browser error pages, the Chrome Web Store, other extensions’ pages, or the built-in PDF viewer. This is the same Chrome restriction that affects the Arc Side of the Chrome sidebar.
+
+A **yellow ! on the toolbar icon** indicates that the webpage dock is unavailable on the current tab. Click the icon to open the toolbar launcher: your pinned apps are still available in the same order. Hover over the icon or open the launcher for an explanation. After updating the extension, refresh existing webpages to enable the dock there again.
+
+The warning clears when you switch to a supported page. In **Disabled — toolbar only** mode the dock is intentionally off, so no warning is shown. The webpage dock also stays hidden during fullscreen.
 
 Settings stay on your device. No analytics.
 

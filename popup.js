@@ -1,6 +1,6 @@
-const grid=document.getElementById('apps'), search=document.getElementById('search'), status=document.getElementById('status');
+const grid=document.getElementById('apps'), status=document.getElementById('status');
 const menu=document.createElement('div');menu.className='context-menu';menu.hidden=true;menu.setAttribute('role','menu');document.body.append(menu);
-let config=GDock.normalize(), running=[], activeId=null, origin;
+let config=GDock.normalize(), running=[], activeId=null, origin, loaded=false;
 async function request(message){const r=await chrome.runtime.sendMessage(message);if(r?.error)throw new Error(r.error);return r;}
 function closeMenu(){menu.hidden=true;if(origin?.isConnected)origin.focus();}
 async function showMenu(app,b,e){
@@ -8,7 +8,7 @@ async function showMenu(app,b,e){
   try{applyState(await request({type:'state-get'}));}catch(error){status.textContent=error.message;return;}origin=b;menu.replaceChildren();
   const keep=config.dockApps.includes(app.id), pin=document.createElement('button');
   pin.setAttribute('role','menuitemcheckbox');pin.setAttribute('aria-checked',String(keep));pin.textContent=(keep?'✓  ':'')+'Keep in Dock';
-  pin.onclick=async()=>{closeMenu();try{const r=await request({type:'pin',appId:app.id,keep:!keep});config=GDock.normalize(r.settings);}catch(e){status.textContent=e.message;}};
+  pin.onclick=async()=>{closeMenu();try{const r=await request({type:'pin',appId:app.id,keep:!keep});config=GDock.normalize(r.settings);render();}catch(e){status.textContent=e.message;}};
   const isOpen=running.includes(app.id);
   const open=document.createElement('button');open.textContent=isOpen?'Close':'Open';open.setAttribute('role','menuitem');open.onclick=async()=>{if(!isOpen)return launch(app);closeMenu();try{await request({type:'close',appId:app.id});applyState(await request({type:'state-get'}));}catch(e){status.textContent=e.message;}};
   menu.append(pin,open);menu.hidden=false;
@@ -22,7 +22,7 @@ async function launch(app,flags={}){
 }
 function render(){
   grid.replaceChildren();
-  for(const app of GDock.apps.filter(a=>GDock.searchMatches(a,search.value))){
+  for(const app of config.dockApps.map(id=>GDock.apps.find(a=>a.id===id)).filter(Boolean)){
     const b=document.createElement('button');b.dataset.appId=app.id;b.innerHTML=app.icon;
     const name=document.createElement('span');name.textContent=app.name;b.append(name);
     b.onclick=e=>launch(app,{newTab:e.ctrlKey||e.metaKey||e.shiftKey});
@@ -32,7 +32,6 @@ function render(){
   }
   markRunning();
 }
-search.addEventListener('input',()=>{closeMenu();render();});
 document.addEventListener('pointerdown',e=>{if(!menu.hidden&&!e.composedPath().includes(menu))menu.hidden=true;});
 document.addEventListener('keydown',e=>{if(!menu.hidden&&e.key==='Escape'){e.preventDefault();closeMenu();}else if(!menu.hidden&&['ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();const items=[...menu.querySelectorAll('button')],i=items.indexOf(document.activeElement);items[(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length].focus();}});
 document.getElementById('settings').onclick=()=>chrome.runtime.openOptionsPage();
@@ -43,7 +42,13 @@ function markRunning(){
     b.setAttribute('aria-label',app.name+(open?' (open)':''));
   });
 }
-function applyState(state){config=GDock.normalize(state.settings);running=state.ids || [];activeId=state.activeId || null;markRunning();}
+function applyState(state){
+  const next=GDock.normalize(state.settings),changed=JSON.stringify(next.dockApps)!==JSON.stringify(config.dockApps);
+  config=next;running=state.ids || [];activeId=state.activeId || null;
+  if(changed||!loaded)render();else markRunning();loaded=true;
+  const warning=document.getElementById('page-warning');
+  if(warning){warning.textContent=state.pageWarning || '';warning.hidden=!state.pageWarning;}
+}
 chrome.runtime.onMessage.addListener(message=>{if(message.type==='dock-state')applyState(message.state);});
 request({type:'state-get'}).then(applyState).catch(e=>status.textContent=e.message);
-render();search.focus();
+document.getElementById('settings').focus();
