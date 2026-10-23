@@ -9,7 +9,7 @@ async function setup(state){
     addEventListener(name,fn){this.handlers[name]=fn;}
     focus(){}
   }
-  const nodes=Object.fromEntries(['apps','status','settings','page-warning'].map(id=>[id,new Element()]));let receive,opened=false;
+  const nodes=Object.fromEntries(['apps','status','settings'].map(id=>[id,new Element()]));let receive,opened=false;
   const document={getElementById:id=>nodes[id],createElement:tag=>Object.assign(new Element(),{tagName:tag}),body:new Element(),addEventListener(){}};
   const chrome={runtime:{sendMessage:async()=>state,onMessage:{addListener:fn=>receive=fn},openOptionsPage:()=>opened=true}};
   const ctx=vm.createContext({document,chrome,window:{close(){}},URL});
@@ -30,9 +30,9 @@ test('toolbar follows pinning, unpinning and reorder pushes immediately',async()
     s.receive({type:'dock-state',state:{settings:{dockApps:pins},ids:[]}});assert.deepEqual(s.ids(),pins);
   }
 });
-test('empty pins stay empty with Settings available; warning follows current tab',async()=>{
+test('empty pins stay empty with Settings available and warnings do not add a panel',async()=>{
   const s=await setup({settings:{dockApps:[]},ids:['gmail'],pageWarning:'Dock unavailable'});
   assert.deepEqual(s.ids(),[]);s.nodes.settings.onclick();assert.equal(s.opened(),true);
-  assert.equal(s.nodes['page-warning'].hidden,false);assert.equal(s.nodes['page-warning'].textContent,'Dock unavailable');
-  s.receive({type:'dock-state',state:{settings:{dockApps:[]},ids:[]}});assert.equal(s.nodes['page-warning'].hidden,true);
+  assert.equal(s.nodes['page-warning'],undefined);
+  s.receive({type:'dock-state',state:{settings:{dockApps:[]},ids:[]}});assert.deepEqual(s.ids(),[]);
 });

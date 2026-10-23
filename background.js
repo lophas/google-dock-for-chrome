@@ -238,6 +238,7 @@ async function handle(message,sender) {
   if (message.type === 'close') return closeApp(message,sender);
   if (message.type === 'pin' || message.type === 'settings-patch' || message.type === 'reorder' || message.type==='remember-account' || message.type==='reset-account') return changeSettings(message);
   if(message.type==='state-get' || message.type==='running'){
+    if(message.type==='state-get' && sender.tab)await GDockToolbar.markReady(sender.tab);
     await ensureDockState();
     const windowId=sender.tab?.windowId ?? (await chrome.windows.getLastFocused()).id;
     return stateForWindow(windowId);
@@ -270,10 +271,12 @@ function scheduleOrderSync(windowId) {
     syncTimers.delete(windowId);syncWindowGroups(windowId).catch(()=>{});
   },150));
 }
-chrome.tabs.onActivated.addListener(()=>scheduleStateRefresh());
+chrome.tabs.onActivated.addListener(({tabId})=>{GDockToolbar.invalidate(tabId);scheduleStateRefresh();});
 chrome.tabs.onCreated.addListener(()=>scheduleStateRefresh());
 chrome.tabs.onUpdated.addListener((tabId,changes,tab)=>{
-  if(changes.url || changes.status==='complete' || changes.groupId!==undefined){scheduleStateRefresh();scheduleOrderSync(tab.windowId);}
+  if(changes.url || changes.status==='loading')GDockToolbar.invalidate(tabId,true);
+  else if(changes.status==='complete')GDockToolbar.invalidate(tabId);
+  if(changes.url || changes.status || changes.groupId!==undefined){scheduleStateRefresh();scheduleOrderSync(tab.windowId);}
 });
 chrome.tabs.onMoved.addListener((tabId,info)=>scheduleOrderSync(info.windowId));
 chrome.tabs.onAttached.addListener((tabId,info)=>{scheduleStateRefresh();scheduleOrderSync(info.newWindowId);});

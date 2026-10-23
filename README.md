@@ -97,7 +97,7 @@ Tasks and Calendar have separate tab indicators even when both use the Calendar 
 
 Chrome does not allow the floating dock or its edge trigger on internal pages (such as Settings and New Tab), browser error pages, the Chrome Web Store, other extensions’ pages, or the built-in PDF viewer. This is the same Chrome restriction that affects the Arc Side of the Chrome sidebar.
 
-A **yellow ! on the toolbar icon** indicates that the webpage dock is unavailable on the current tab. Click the icon to open the toolbar launcher: your pinned apps are still available in the same order. Hover over the icon or open the launcher for an explanation. After updating the extension, refresh existing webpages to enable the dock there again.
+A **yellow ! on the toolbar icon** indicates that the webpage dock is unavailable on the current tab. Click the icon to open the toolbar launcher: your pinned apps are still available in the same order. Hover over the toolbar icon for an explanation. After updating the extension, refresh existing webpages to enable the dock there again.
 
 The warning clears when you switch to a supported page. In **Disabled — toolbar only** mode the dock is intentionally off, so no warning is shown. The webpage dock also stays hidden during fullscreen.
 

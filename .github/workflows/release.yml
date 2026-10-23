@@ -34,10 +34,9 @@ jobs:
           zip -qr "$PACKAGE.zip" "$PACKAGE"
           (cd "$PACKAGE" && zip -qr "../$PACKAGE-webstore.zip" .)
           cat > release-notes.md <<'NOTES'
-          - Toolbar launcher shows only pinned apps in dock order and a Settings button.
-          - Pin and order changes update both app menus immediately.
-          - Yellow toolbar warning on pages where Chrome blocks the webpage dock, with an explanatory tooltip and launcher notice.
-          - Document restricted pages and toolbar-only behavior.
+          - Fix stale toolbar warnings after switching tabs, navigation and delayed page checks.
+          - Clear the warning when the webpage dock confirms it is ready.
+          - Keep the explanation in the toolbar tooltip; remove the yellow warning panel from the launcher.
 
           **Install:** Download the attached ZIP, extract it, then select the extracted folder using **Load unpacked** at `chrome://extensions` with **Developer mode** enabled. Refresh existing website tabs.
 

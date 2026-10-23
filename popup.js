@@ -46,8 +46,6 @@ function applyState(state){
   const next=GDock.normalize(state.settings),changed=JSON.stringify(next.dockApps)!==JSON.stringify(config.dockApps);
   config=next;running=state.ids || [];activeId=state.activeId || null;
   if(changed||!loaded)render();else markRunning();loaded=true;
-  const warning=document.getElementById('page-warning');
-  if(warning){warning.textContent=state.pageWarning || '';warning.hidden=!state.pageWarning;}
 }
 chrome.runtime.onMessage.addListener(message=>{if(message.type==='dock-state')applyState(message.state);});
 request({type:'state-get'}).then(applyState).catch(e=>status.textContent=e.message);

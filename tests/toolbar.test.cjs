@@ -4,7 +4,7 @@ function setup(){
   const action=Object.fromEntries(['setBadgeText','setBadgeBackgroundColor','setBadgeTextColor','setTitle'].map(name=>[name,async value=>calls.push({name,...value})]));
   const chrome={action,tabs:{sendMessage:async()=>{if(!ready)throw Error('No receiving end');return {dockReady:true};}}};
   const ctx=vm.createContext({chrome,URL});vm.runInContext(fs.readFileSync(path.join(__dirname,'..','toolbar.js'),'utf8'),ctx);
-  return {api:ctx.GDockToolbar,calls,setReady:value=>ready=value};
+  return {api:ctx.GDockToolbar,calls,chrome,setReady:value=>ready=value};
 }
 test('restricted pages get the same yellow ! and dark text as Arc Sidebar',async()=>{
   const s=setup();
@@ -33,4 +33,29 @@ test('badges belong to individual active tabs and unchanged states avoid repeate
   const s=setup(),tabs=[{id:1,active:true,url:'chrome://settings/'},{id:2,active:false,url:'chrome://version/'}];
   await s.api.refresh(tabs,{enabled:true});const count=s.calls.length;await s.api.refresh(tabs,{enabled:true});assert.equal(s.calls.length,count);
   assert.ok(s.calls.every(c=>c.tabId===1));
+});
+test('reactivation forces a clear even when the supported URL and cached state are unchanged',async()=>{
+  const s=setup(),tab={id:9,active:true,url:'https://example.com/',status:'complete'};
+  await s.api.refresh([tab],{enabled:true});const previous=s.calls.filter(c=>c.name==='setBadgeText').length;
+  s.api.invalidate(tab.id);await s.api.refresh([tab],{enabled:true});
+  const badges=s.calls.filter(c=>c.name==='setBadgeText');assert.equal(badges.length,previous+1);assert.equal(badges.at(-1).text,'');
+});
+test('a delayed failed probe cannot restore a warning after the dock confirms readiness',async()=>{
+  const s=setup(),tab={id:10,active:true,url:'https://example.com/',status:'complete'};
+  s.setReady(false);await s.api.refresh([tab],{enabled:true});
+  let finish;s.chrome.tabs.sendMessage=()=>new Promise(resolve=>finish=resolve);
+  const stale=s.api.refresh([tab],{enabled:true});
+  await s.api.markReady(tab);finish(undefined);await stale;
+  assert.equal(s.calls.filter(c=>c.name==='setBadgeText').at(-1).text,'');assert.equal(s.api.message(tab),'');
+});
+test('a late failed probe cannot override Disabled mode',async()=>{
+  const s=setup(),tab={id:11,active:true,url:'https://example.com/',status:'complete'};
+  let finish;s.chrome.tabs.sendMessage=()=>new Promise(resolve=>finish=resolve);
+  const stale=s.api.refresh([tab],{enabled:true});await s.api.refresh([tab],{enabled:false});finish(undefined);await stale;
+  assert.equal(s.calls.filter(c=>c.name==='setBadgeText').at(-1).text,'');
+});
+test('readiness clears transient warnings but is reset for a new document at the same URL',async()=>{
+  const s=setup(),tab={id:12,active:true,url:'https://example.com/',status:'complete'};
+  await s.api.markReady(tab);s.setReady(false);await s.api.refresh([tab],{enabled:true});assert.equal(s.api.message(tab),'');
+  s.api.invalidate(tab.id,true);await s.api.refresh([tab],{enabled:true});assert.match(s.api.message(tab),/unavailable/);
 });
